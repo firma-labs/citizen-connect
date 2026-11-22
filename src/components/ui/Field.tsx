@@ -8,9 +8,9 @@ export type Attention = "low" | "medium" | undefined;
 
 export const inputClass = (attention?: Attention, invalid?: boolean) =>
   [
-    "block w-full rounded-[var(--radius-control)] border-2 bg-surface px-3.5 py-3 text-ink",
+    "block w-full rounded-[var(--radius-control)] border-[1.5px] bg-surface px-4 py-3 text-ink shadow-[inset_0_1px_2px_rgb(28_31_51/0.04)]",
     "placeholder:text-ink-3 min-h-12",
-    invalid ? "border-red-600" : attention === "low" ? "border-marigold-500 bg-marigold-50/40" : attention === "medium" ? "border-marigold-200" : "border-rule-strong",
+    invalid ? "border-red-600" : attention === "low" ? "border-marigold-500 bg-marigold-50/50" : attention === "medium" ? "border-marigold-200" : "border-rule-strong",
   ].join(" ");
 
 /**
@@ -38,7 +38,7 @@ export function Field({
   const { t, hint } = useI18n();
   const en = hint(label);
   return (
-    <div id={`field-${id}`} className={`scroll-mt-24 ${attention ? "border-l-4 pl-3 " + (attention === "low" ? "border-marigold-500" : "border-marigold-200") : ""}`}>
+    <div id={`field-${id}`} className={`scroll-mt-24 ${attention ? "-mx-3 rounded-[var(--radius-panel)] bg-gradient-to-br px-3 py-3 " + (attention === "low" ? "from-marigold-50 to-white" : "from-marigold-50/50 to-white") : ""}`}>
       <label htmlFor={id} className="block">
         <span className="block font-semibold text-ink">{t(label)}</span>
         {en && <span className="block text-[0.82rem] leading-snug text-ink-3">{en}</span>}
@@ -67,7 +67,7 @@ export function SectionTitle({ k, className = "" }: { k: MessageKey; className?:
   const { t, hint } = useI18n();
   const en = hint(k);
   return (
-    <h2 className={`text-[1.25rem] font-bold ${className}`}>
+    <h2 className={`text-[1.2rem] font-semibold tracking-tight ${className}`}>
       {t(k)}
       {en && <span className="block text-[0.82rem] font-normal text-ink-3">{en}</span>}
     </h2>

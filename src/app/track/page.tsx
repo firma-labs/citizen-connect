@@ -115,7 +115,7 @@ function Track() {
       )}
 
       {result && (
-        <section className="mt-6 rounded-[var(--radius-panel)] border border-rule bg-surface p-5" aria-live="polite">
+        <section className="mt-6 card bg-gradient-to-br from-mint-50/60 via-white to-white p-5" aria-live="polite">
           <p className="token text-[1.3rem]">{result.token}</p>
           <p className="text-ink-3">{t("track.received", { date: date(result.received_at) })}</p>
           <ol className="mt-5">
@@ -124,9 +124,9 @@ function Track() {
               const last = i === STAGES.length - 1;
               return (
                 <li key={s.key} className="relative flex gap-4 pb-6 last:pb-0" aria-current={i === idx ? "step" : undefined}>
-                  {!last && <span aria-hidden className={`absolute left-[17px] top-9 h-[calc(100%-2.25rem)] w-[3px] rounded ${i < idx ? "bg-indigo-700" : "bg-rule"}`} />}
+                  {!last && <span aria-hidden className={`absolute left-[17px] top-9 h-[calc(100%-2.25rem)] w-[3px] rounded ${i < idx ? "bg-mint-200" : "bg-rule"}`} />}
                   <span
-                    className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-full font-bold ${reached ? "bg-indigo-700 text-white" : "bg-paper text-ink-3 ring-2 ring-inset ring-rule-strong"}`}
+                    className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-full font-bold ${reached ? (i === idx ? "bg-mint-500 text-white shadow-[0_0_0_5px_var(--color-mint-50)]" : "bg-mint-100 text-mint-700") : "bg-paper text-ink-3"}`}
                   >
                     {reached ? <Icon name="check" size={20} /> : new Intl.NumberFormat(tag).format(i + 1)}
                   </span>

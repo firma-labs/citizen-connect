@@ -1,47 +1,77 @@
 @import "tailwindcss";
 
 /*
- * Janata Darbar design tokens.
- * Indigo is the stamp-pad ink of Indian government seals; marigold marks
- * what a person must check. Built for arm's-length reading in daylight:
- * light scheme only, 17px body, ≥48px targets, WCAG 2.2 AA contrast.
+ * Janata Darbar design tokens — pastel system.
+ * White page; each kind of information has its own pastel family
+ * (sky = in progress, peach = needs a person, rose = late or failed,
+ * mint = done, violet = selection and links). Primary actions are dark ink
+ * pills. Text colours keep WCAG 2.2 AA contrast on their tints.
  */
 :root {
   color-scheme: light;
 }
 
 @theme inline {
-  --color-ink: #1b1e2e;
-  --color-ink-2: #4a5068; /* secondary text, 7.4:1 on white */
-  --color-ink-3: #6b7088; /* hints, 4.9:1 on white */
-  --color-paper: #f5f6fa;
+  --color-ink: #1c1f33;
+  --color-ink-2: #4b5068; /* 8.0:1 on white */
+  --color-ink-3: #686d86; /* 5.2:1 on white */
+  --color-paper: #f5f5fa; /* subtle fills only — the page itself is white */
   --color-surface: #ffffff;
-  --color-rule: #d8dbe7;
-  --color-rule-strong: #b7bcd0;
+  --color-rule: #ebedf4;
+  --color-rule-strong: #d3d7e5;
 
-  --color-indigo-50: #eef0fb;
-  --color-indigo-100: #dfe2f6;
-  --color-indigo-200: #c3c8ee;
-  --color-indigo-600: #3a47b0;
-  --color-indigo-700: #2f3b9c; /* primary, 9.0:1 with white */
-  --color-indigo-800: #262f80;
-  --color-indigo-900: #1c2360;
+  /* violet: links, selection, brand */
+  --color-indigo-50: #f4f1ff;
+  --color-indigo-100: #e9e3ff;
+  --color-indigo-200: #d6ccfd;
+  --color-indigo-600: #6b55e0;
+  --color-indigo-700: #5a43cf;
+  --color-indigo-800: #4733ad;
+  --color-indigo-900: #35267f;
 
-  --color-marigold-50: #fff3d6;
-  --color-marigold-200: #f6d48a;
-  --color-marigold-500: #e09a00;
-  --color-marigold-700: #8a5300; /* text on marigold-50, 6.1:1 */
+  /* sky: uploaded, reading, in progress */
+  --color-sky-50: #eaf4ff;
+  --color-sky-100: #d6e9fe;
+  --color-sky-200: #b4d6fb;
+  --color-sky-500: #4f9ae8;
+  --color-sky-700: #1f63b3;
 
-  --color-red-50: #fdecea;
-  --color-red-600: #b3261e;
-  --color-red-700: #8c1d17;
+  /* mint: sent, resolved */
+  --color-mint-50: #e8f8f0;
+  --color-mint-100: #d0f0e0;
+  --color-mint-200: #a9e2c6;
+  --color-mint-500: #3fb57d;
+  --color-mint-700: #1d7a4f;
+
+  /* peach: a person must check this */
+  --color-marigold-50: #fff2e8;
+  --color-marigold-200: #fdd3b3;
+  --color-marigold-500: #f08c42;
+  --color-marigold-700: #a84b08;
+
+  /* rose: overdue, failed, errors */
+  --color-red-50: #fdeeef;
+  --color-red-200: #f8c6cb;
+  --color-red-500: #ec6a77;
+  --color-red-600: #c2334a;
+  --color-red-700: #9c2236;
 
   --color-focus: #ffd43b;
 
-  --font-sans: var(--font-mukta), system-ui, sans-serif;
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
 
-  --radius-control: 10px;
-  --radius-panel: 16px;
+  --radius-control: 14px;
+  --radius-panel: 22px;
+}
+
+/* White card with a hairline and a soft, low shadow. */
+@utility card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-panel);
+  box-shadow:
+    0 1px 2px rgb(28 31 51 / 0.04),
+    0 12px 32px -20px rgb(28 31 51 / 0.22);
 }
 
 html {
@@ -51,7 +81,7 @@ html {
 }
 
 body {
-  background: var(--color-paper);
+  background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.6; /* Devanagari needs room for matras above and below */

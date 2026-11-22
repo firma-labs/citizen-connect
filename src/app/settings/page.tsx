@@ -79,7 +79,7 @@ export default function SettingsPage() {
           options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.tag }))}
         />
 
-        <div className="mt-8 divide-y divide-rule rounded-[var(--radius-panel)] border border-rule bg-surface">
+        <div className="mt-8 divide-y divide-rule card">
           {locale !== "en" && <Toggle label="settings.hints" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />}
           <Toggle label="settings.autoCrop" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
           <Toggle label="settings.live" help="settings.live.hint" checked={s.liveCamera} onChange={(v) => saveSettings({ liveCamera: v })} />
@@ -92,7 +92,7 @@ export default function SettingsPage() {
               {t("settings.offline")}
             </Notice>
           ) : (
-            <dl className="mt-3 divide-y divide-rule rounded-[var(--radius-panel)] border border-rule bg-surface">
+            <dl className="mt-3 divide-y divide-rule card">
               {(
                 [
                   ["settings.store", health?.store],
@@ -142,17 +142,16 @@ function Choice({
         {t(title)}
         {hint(title) && <span className="block text-[0.82rem] font-normal text-ink-3">{hint(title)}</span>}
       </legend>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-3 gap-1 rounded-full bg-paper p-1">
         {options.map((o) => {
           const on = o.value === value;
           return (
             <label
               key={o.value}
               lang={o.lang}
-              className={`flex min-h-14 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-control)] px-2 text-center font-semibold leading-tight has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-focus ${on ? "bg-indigo-700 text-white" : "bg-surface text-ink ring-1 ring-inset ring-rule-strong"}`}
+              className={`flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2 text-center font-medium leading-tight has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-focus ${on ? "bg-ink text-white shadow-[0_0_0_3px_var(--color-sky-200)]" : "text-ink-2 hover:bg-surface"}`}
             >
               <input type="radio" name={title} value={o.value} checked={on} onChange={() => onChange(o.value)} className="sr-only" />
-              {on && <Icon name="check" size={18} />}
               {o.label}
             </label>
           );
@@ -178,7 +177,7 @@ function Toggle({ label, help, checked, onChange }: { label: MessageKey; help: M
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${checked ? "bg-indigo-700" : "bg-rule-strong"}`}
+        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${checked ? "bg-ink" : "bg-rule-strong"}`}
       >
         <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-[left] ${checked ? "left-7" : "left-1"}`} />
       </button>

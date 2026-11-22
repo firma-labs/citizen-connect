@@ -143,7 +143,7 @@ export function RescanPanel({
   const changed = !!pages && (pages.length !== initialUrls.length || pages.some((p) => p.changed));
 
   return (
-    <section className="mb-5 rounded-[var(--radius-panel)] border-2 border-indigo-700 bg-surface p-4" aria-labelledby="rescan-title">
+    <section className="mb-5 card bg-gradient-to-br from-indigo-50 via-white to-sky-50/50 p-5" aria-labelledby="rescan-title">
       <h2 id="rescan-title" className="text-[1.2rem] font-bold">
         {t("rescan.title")}
       </h2>
@@ -162,10 +162,10 @@ export function RescanPanel({
                 <img
                   src={p.url}
                   alt={t("capture.page", { n: i + 1 })}
-                  className={`aspect-[3/4] w-full rounded-[var(--radius-control)] object-cover ${p.changed ? "ring-[3px] ring-indigo-600" : "ring-1 ring-rule"}`}
+                  className={`aspect-[3/4] w-full rounded-[var(--radius-control)] object-cover ${p.changed ? "ring-[3px] ring-sky-500" : "ring-1 ring-rule"}`}
                 />
                 <span className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-2 text-[0.85rem] font-bold text-white">{i + 1}</span>
-                {p.changed && <span className="absolute right-2 top-2 rounded-full bg-indigo-700 px-2 py-0.5 text-[0.78rem] font-bold text-white">{t("rescan.new")}</span>}
+                {p.changed && <span className="absolute right-2 top-2 rounded-full bg-sky-500 px-2 py-0.5 text-[0.78rem] font-bold text-white">{t("rescan.new")}</span>}
               </div>
               <div className="mt-2 grid gap-1.5">
                 <Button size="md" icon="camera" disabled={busy} onClick={() => shoot(i)}>
@@ -197,7 +197,7 @@ export function RescanPanel({
             <button
               disabled={busy}
               onClick={() => shoot(null)}
-              className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-dashed border-indigo-600 text-indigo-800 disabled:opacity-40"
+              className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-dashed border-indigo-200 bg-white/60 text-indigo-800 disabled:opacity-40"
             >
               <Icon name="plus" size={32} />
               <span className="font-semibold">{t("rescan.add")}</span>

@@ -6,6 +6,7 @@ import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { StatTile } from "@/components/ui/StatTile";
 import { getDraft, listApps, subscribe, type LocalApplication } from "@/lib/client/db";
 import { useSettings } from "@/lib/client/settings";
 import { useI18n, type MessageKey } from "@/lib/i18n";
@@ -55,12 +56,12 @@ export default function Home() {
             {t("home.today")}
             {now && <> · {date(now, { weekday: "long", day: "numeric", month: "long" })}</>}
           </p>
-          <h1 className="mt-0.5 text-[2.1rem] font-extrabold tracking-tight">{hydrated ? refLabel(v, locale) : " "}</h1>
-          <dl className="mt-4 grid grid-cols-3 divide-x divide-rule rounded-[var(--radius-panel)] border border-rule bg-surface">
-            <Stat value={nf(counts.today)} label="home.stat.today" />
-            <Stat value={nf(counts.queued)} label="home.stat.toSync" attention={counts.queued > 0} />
-            <Stat value={nf(counts.toVerify)} label="home.stat.toVerify" attention={counts.toVerify > 0} href="/queue" />
-          </dl>
+          <h1 className="mt-0.5 text-[2.1rem] font-bold tracking-tight">{hydrated ? refLabel(v, locale) : " "}</h1>
+          <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
+            <StatTile tone="sky" value={nf(counts.today)} label={t("home.stat.today")} />
+            <StatTile tone="peach" value={nf(counts.queued)} label={t("home.stat.toSync")} />
+            <StatTile tone="violet" value={nf(counts.toVerify)} label={t("home.stat.toVerify")} href="/queue" />
+          </div>
         </section>
 
         {draft && (
@@ -71,14 +72,14 @@ export default function Home() {
           </Link>
         )}
 
-        <Button href="/capture" size="lg" block icon="camera" className="min-h-16 text-[1.2rem]">
+        <Button href="/capture" size="lg" block icon="camera" className="min-h-16 text-[1.15rem]">
           {t("home.scan")}
         </Button>
         <p className="mt-2 text-center text-[0.92rem] text-ink-3">{t("home.scan.hint")}</p>
 
-        <ul className="mt-6 divide-y divide-rule overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-surface">
-          <Row href="/queue" icon="list" label="home.queue" count={counts.toVerify} />
-          <Row href="/track" icon="search" label="home.track" />
+        <ul className="mt-6 divide-y divide-rule overflow-hidden card">
+          <Row href="/queue" icon="list" label="home.queue" count={counts.toVerify} chip="bg-sky-50 text-sky-700" />
+          <Row href="/track" icon="search" label="home.track" chip="bg-indigo-50 text-indigo-800" />
         </ul>
       </Screen>
       <BottomNav />
@@ -86,30 +87,15 @@ export default function Home() {
   );
 }
 
-function Stat({ value, label, attention, href }: { value: string; label: MessageKey; attention?: boolean; href?: string }) {
-  const { t } = useI18n();
-  const body = (
-    <>
-      <dt className="mt-1.5 text-[0.85rem] leading-snug text-ink-2">{t(label)}</dt>
-      <dd className={`text-[1.9rem] font-extrabold leading-none ${attention ? "text-marigold-700" : "text-ink"}`}>{value}</dd>
-    </>
-  );
-  // <dl> may only hold <div> groups, so a linked stat uses a stretched link over the group.
-  return (
-    <div className="relative flex flex-col-reverse justify-end p-3.5">
-      {body}
-      {href && <Link href={href} aria-label={t(label)} className="absolute inset-0 rounded-[var(--radius-panel)]" />}
-    </div>
-  );
-}
-
-function Row({ href, icon, label, count }: { href: string; icon: IconName; label: MessageKey; count?: number }) {
+function Row({ href, icon, label, count, chip }: { href: string; icon: IconName; label: MessageKey; count?: number; chip: string }) {
   const { t } = useI18n();
   return (
     <li>
       <Link href={href} className="flex min-h-16 items-center gap-3 px-4 hover:bg-paper">
-        <Icon name={icon} className="text-indigo-700" />
-        <span className="flex-1 font-semibold">{t(label)}</span>
+        <span className={`grid h-10 w-10 place-items-center rounded-full ${chip}`}>
+          <Icon name={icon} size={20} />
+        </span>
+        <span className="flex-1 font-medium">{t(label)}</span>
         {!!count && <span className="rounded-full bg-marigold-50 px-2.5 py-0.5 text-[0.9rem] font-bold text-marigold-700">{count}</span>}
         <Icon name="next" className="text-ink-3" />
       </Link>

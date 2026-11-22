@@ -5,6 +5,7 @@ import { TokenCard } from "@/components/TokenCard";
 import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
+import { StatTile } from "@/components/ui/StatTile";
 import { StatusTag } from "@/components/ui/StatusTag";
 import { listApps, subscribe, type LocalApplication } from "@/lib/client/db";
 import { onSyncState, requestRead, syncNow } from "@/lib/client/sync";
@@ -23,7 +24,7 @@ interface ServerRow {
 }
 
 export default function QueuePage() {
-  const { t } = useI18n();
+  const { t, tag } = useI18n();
   const [local, setLocal] = useState<LocalApplication[]>([]);
   const [server, setServer] = useState<ServerRow[] | null>(null);
   const [sync, setSync] = useState({ running: false, online: true, lastError: null as string | null });
@@ -56,17 +57,29 @@ export default function QueuePage() {
   const localTokens = new Set(local.map((l) => l.token));
   const byToken = new Map((server ?? []).map((s) => [s.token, s]));
   const others = (server ?? []).filter((s) => !localTokens.has(s.token));
+  // Status of every application this screen knows about, for the summary tiles.
+  const statuses = [
+    ...local.map((a) => (a.state === "queued" ? "queued" : (byToken.get(a.token)?.status ?? a.server_status ?? "captured"))),
+    ...others.map((s) => s.status),
+  ];
+  const count = (...st: string[]) => new Intl.NumberFormat(tag).format(statuses.filter((x) => st.includes(x)).length);
 
   return (
     <>
       <AppBar />
       <Screen wide>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-[1.6rem] font-extrabold">{t("queue.title")}</h1>
+          <h1 className="text-[1.7rem] font-bold tracking-tight">{t("queue.title")}</h1>
           <Button variant="secondary" icon="upload" onClick={() => void syncNow()} disabled={!sync.online || sync.running}>
             {sync.running ? t("queue.uploading") : t("queue.syncNow")}
           </Button>
         </div>
+        <div className="mb-6 grid grid-cols-3 gap-2.5 sm:gap-3">
+          <StatTile tone="peach" value={count("read", "read_failed")} label={t("status.read")} />
+          <StatTile tone="sky" value={count("queued", "captured", "reading")} label={t("status.reading")} />
+          <StatTile tone="mint" value={count("routed", "in_progress", "closed")} label={t("status.routed")} />
+        </div>
+
         {!sync.online && (
           <Notice tone="attention" className="mb-5">
             {t("queue.offline")}
@@ -82,7 +95,7 @@ export default function QueuePage() {
           {t("queue.onPhone")} <span className="font-normal text-ink-3">({local.length})</span>
         </h2>
         {local.length === 0 ? (
-          <p className="mb-8 rounded-[var(--radius-panel)] border border-dashed border-rule-strong p-6 text-center text-ink-3">{t("queue.empty")}</p>
+          <p className="mb-8 rounded-[var(--radius-panel)] bg-paper p-6 text-center text-ink-3">{t("queue.empty")}</p>
         ) : (
           <ul className="mb-8 grid gap-3 lg:grid-cols-2">
             {local.map((a) => {
@@ -137,7 +150,7 @@ export default function QueuePage() {
 
       {showToken && (
         <div className="fixed inset-0 z-30 overflow-auto bg-ink/70 p-4 backdrop-blur-sm" onClick={() => setShowToken(null)} role="dialog" aria-modal="true">
-          <div className="mx-auto max-w-md pt-6" onClick={(e) => e.stopPropagation()}>
+          <div className="mx-auto max-w-md rounded-[28px] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4" onClick={(e) => e.stopPropagation()}>
             <TokenCard token={showToken} />
             <Button variant="secondary" block className="mt-3" icon="close" onClick={() => setShowToken(null)}>
               {t("capture.close")}
@@ -148,6 +161,17 @@ export default function QueuePage() {
     </>
   );
 }
+
+const EDGE: Record<string, string> = {
+  queued: "border-l-marigold-200",
+  captured: "border-l-sky-200",
+  reading: "border-l-sky-500",
+  read: "border-l-marigold-500 bg-gradient-to-br from-marigold-50/70 via-white to-white",
+  read_failed: "border-l-red-500 bg-gradient-to-br from-red-50/70 via-white to-white",
+  routed: "border-l-mint-500",
+  in_progress: "border-l-indigo-600",
+  closed: "border-l-ink",
+};
 
 function Item({
   token,
@@ -180,9 +204,9 @@ function Item({
   ].filter(Boolean);
 
   return (
-    <li className={`rounded-[var(--radius-panel)] border bg-surface p-4 ${needsCheck ? "border-marigold-500" : "border-rule"}`}>
+    <li className={`card border-l-4 p-4 ${EDGE[status] ?? "border-l-rule-strong"}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button onClick={onShowToken} className="token flex items-center gap-1.5 text-[1.15rem] text-indigo-800 underline-offset-4 hover:underline">
+        <button onClick={onShowToken} className="token flex items-center gap-1.5 text-[1.1rem] text-ink underline-offset-4 hover:underline">
           {token}
         </button>
         <StatusTag status={status} />

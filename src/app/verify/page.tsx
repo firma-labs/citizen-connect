@@ -266,7 +266,7 @@ function Verify() {
                 <button
                   onClick={() => setZoom(viewing)}
                   aria-label={t("verify.openPage", { n: viewing + 1 })}
-                  className="block w-full overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-surface"
+                  className="block w-full overflow-hidden card"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- API image */}
                   <img src={pageUrls[Math.min(viewing, pageUrls.length - 1)]} alt="" className="max-h-[calc(100vh-11rem)] w-full object-contain" />
@@ -278,7 +278,7 @@ function Verify() {
                         key={u}
                         onClick={() => setViewing(i)}
                         aria-current={viewing === i}
-                        className={`h-11 min-w-11 rounded-full px-3 font-semibold ${viewing === i ? "bg-ink text-white" : "bg-surface text-ink ring-1 ring-rule-strong"}`}
+                        className={`h-11 min-w-11 rounded-full px-3 font-semibold ${viewing === i ? "bg-ink text-white" : "bg-paper text-ink hover:bg-indigo-50"}`}
                       >
                         {i + 1}
                         {pageType(i) ? <span className="ml-1.5 font-normal opacity-80">{pageType(i)}</span> : null}
@@ -313,8 +313,8 @@ function Verify() {
             )}
 
             {!rescanning && (status === "captured" || status === "reading") && (
-              <div className="flex items-start gap-4 rounded-[var(--radius-panel)] border border-rule bg-surface p-5" role="status">
-                <span className="mt-1 h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-700" aria-hidden />
+              <div className="flex items-start gap-4 card bg-gradient-to-br from-sky-50 via-white to-white p-5" role="status">
+                <span className="mt-1 h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-sky-100 border-t-sky-500" aria-hidden />
                 <div>
                   <p className="font-bold">{t("verify.reading.title")}</p>
                   <p className="text-ink-2">
@@ -439,7 +439,7 @@ function Verify() {
                             onClick={() =>
                               set("secondary_departments", on ? form.secondary_departments.filter((x) => x !== d.code) : [...form.secondary_departments, d.code])
                             }
-                            className={`flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[0.92rem] font-semibold ${on ? "bg-indigo-700 text-white" : "bg-surface text-ink ring-1 ring-inset ring-rule-strong"}`}
+                            className={`flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[0.92rem] font-semibold ${on ? "bg-indigo-100 text-indigo-900 ring-1 ring-inset ring-indigo-200" : "bg-paper text-ink-2 hover:bg-indigo-50"}`}
                           >
                             {on && <Icon name="check" size={16} />}
                             {refLabel(d, locale)}
@@ -457,7 +457,7 @@ function Verify() {
                       {PRIORITIES.map((p) => (
                         <label
                           key={p.code}
-                          className={`flex min-h-12 cursor-pointer items-center justify-center rounded-[var(--radius-control)] px-3 font-semibold ${form.priority === p.code ? (p.code === "urgent" ? "bg-red-600 text-white" : "bg-indigo-700 text-white") : "bg-surface ring-1 ring-inset ring-rule-strong"}`}
+                          className={`flex min-h-12 cursor-pointer items-center justify-center rounded-full px-3 font-medium ${form.priority === p.code ? (p.code === "urgent" ? "bg-red-600 text-white shadow-[0_0_0_3px_var(--color-red-200)]" : "bg-ink text-white shadow-[0_0_0_3px_var(--color-sky-200)]") : "bg-paper text-ink-2 hover:bg-indigo-50"}`}
                         >
                           <input type="radio" name="priority" value={p.code} checked={form.priority === p.code} onChange={() => set("priority", p.code)} className="sr-only" />
                           {refLabel(p, locale)}
@@ -475,7 +475,7 @@ function Verify() {
                 </section>
 
                 {app?.extraction && (
-                  <details className="rounded-[var(--radius-panel)] border border-rule bg-surface">
+                  <details className="card">
                     <summary className="flex min-h-14 cursor-pointer items-center gap-2 px-4 font-semibold">
                       <Icon name="doc" className="text-indigo-700" />
                       {t("verify.transcription")}
@@ -499,7 +499,7 @@ function Verify() {
                   </details>
                 )}
 
-                <div className="rounded-[var(--radius-panel)] border-2 border-indigo-700 bg-surface p-4">
+                <div className="card bg-gradient-to-br from-indigo-50 via-white to-sky-50/60 p-5">
                   <label className="flex cursor-pointer items-start gap-3">
                     <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-7 w-7 shrink-0 accent-indigo-700" />
                     <span className="font-semibold">{t("verify.confirm")}</span>
@@ -556,7 +556,8 @@ function Verify() {
       return <Notice tone="done">{t("verify.attention.none")}</Notice>;
     }
     return (
-      <section aria-labelledby="attention-title" className="rounded-[var(--radius-panel)] border-l-[6px] border-marigold-500 bg-marigold-50 p-4">
+      <section aria-labelledby="attention-title" className="relative isolate overflow-hidden rounded-[var(--radius-panel)] border border-l-4 border-marigold-200 bg-gradient-to-br from-marigold-50 via-marigold-50/50 to-white p-5">
+        <span aria-hidden className="pointer-events-none absolute -bottom-12 -right-12 -z-10 h-36 w-36 rounded-full bg-marigold-200/40" />
         <h2 id="attention-title" className="flex items-center gap-2 text-[1.15rem] font-bold">
           <Icon name="alert" className="text-marigold-700" />
           {flagged.length === 1 ? t("verify.attention.one") : t("verify.attention.title", { n: flagged.length })}
@@ -609,7 +610,7 @@ function Verify() {
           {app.sla_due_at && <p>{t("saved.due", { date: date(app.sla_due_at) })}</p>}
         </Notice>
         {sms && (
-          <section className="rounded-[var(--radius-panel)] border border-rule bg-surface p-4">
+          <section className="card p-4">
             <h2 className="font-bold">
               {t("saved.sms")}
               {sms.to ? <span className="ml-2 font-normal text-ink-3">+91 {sms.to}</span> : null}
@@ -620,7 +621,7 @@ function Verify() {
             <p className="mt-2 rounded-[var(--radius-control)] bg-paper p-3">{sms.body}</p>
           </section>
         )}
-        <section className="rounded-[var(--radius-panel)] border border-rule bg-surface p-4">
+        <section className="card p-4">
           <p className="text-[1.1rem] font-bold">{v.applicant_name_original}</p>
           {v.applicant_name_roman && <p className="text-ink-3">{v.applicant_name_roman}</p>}
           <p className="mt-2">{v.summary_local}</p>
@@ -628,7 +629,7 @@ function Verify() {
             {v.summary_en}
           </p>
         </section>
-        <details className="rounded-[var(--radius-panel)] border border-rule bg-surface">
+        <details className="card">
           <summary className="flex min-h-14 cursor-pointer items-center px-4 font-semibold">{t("saved.history", { n: app.audit.length })}</summary>
           <ol className="space-y-2 border-t border-rule p-4 text-[0.9rem]">
             {app.audit.map((a, i) => (

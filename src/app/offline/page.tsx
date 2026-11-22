@@ -12,7 +12,7 @@ export default function Offline() {
       <AppBar />
       <Screen>
         <div className="mx-auto max-w-md py-12 text-center">
-          <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-ink text-white">
+          <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-sky-100 to-indigo-100 text-indigo-800">
             <Icon name="offline" size={30} />
           </span>
           <h1 className="mt-5 text-[1.6rem] font-extrabold">{t("offline.title")}</h1>

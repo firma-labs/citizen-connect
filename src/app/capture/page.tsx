@@ -180,7 +180,9 @@ export default function CapturePage() {
       <>
         <AppBar title="token.title" back="/" />
         <Screen>
-          <TokenCard token={issued.token} pages={issued.pages} issuedAt={issued.at} />
+          <div className="rounded-[28px] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4 sm:p-6">
+            <TokenCard token={issued.token} pages={issued.pages} issuedAt={issued.at} />
+          </div>
           <p className="mx-auto mt-4 max-w-md text-center text-[0.92rem] text-ink-3">{t("token.saved")}</p>
           <div className="mx-auto mt-5 grid max-w-md gap-3">
             <Button size="lg" block icon="camera" onClick={() => setIssued(null)}>
@@ -208,7 +210,7 @@ export default function CapturePage() {
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <p className="text-ink-3">{t("capture.count")}</p>
-            <p className="text-[2.4rem] font-extrabold leading-none">{pages.length}</p>
+            <p className="text-[2.4rem] font-bold leading-none tracking-tight text-indigo-800">{pages.length}</p>
           </div>
           {token && <p className="token pb-1 text-[0.95rem] text-ink-3">{token}</p>}
         </div>
@@ -226,12 +228,13 @@ export default function CapturePage() {
           <button
             onClick={() => cameraInput.current?.click()}
             disabled={!token}
-            className="group flex min-h-48 w-full flex-col items-center justify-center gap-3 rounded-[var(--radius-panel)] border-2 border-dashed border-indigo-600 bg-surface p-6 text-indigo-800 transition-colors active:bg-indigo-50 disabled:opacity-50"
+            className="group relative isolate flex min-h-52 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[28px] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6 text-ink transition-transform active:scale-[0.99] disabled:opacity-50"
           >
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-indigo-700 text-white">
+            <span aria-hidden className="pointer-events-none absolute -right-12 -top-12 -z-10 h-40 w-40 rounded-full bg-white/50" />
+            <span className="relative grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-ink text-white shadow-[0_10px_24px_-10px_rgb(28_31_51/0.6)]">
               <Icon name="camera" size={32} />
             </span>
-            <span className="text-[1.3rem] font-bold leading-snug">
+            <span className="relative text-[1.25rem] font-semibold leading-snug">
               {pages.length ? t("capture.next", { n: pages.length + 1 }) : t("capture.first")}
             </span>
           </button>
@@ -266,7 +269,7 @@ export default function CapturePage() {
               <li key={p.key}>
                 <button
                   onClick={() => setPreview(p)}
-                  className="relative block w-full overflow-hidden rounded-[var(--radius-control)] border border-rule bg-surface"
+                  className="relative block w-full overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-surface shadow-[0_10px_24px_-18px_rgb(28_31_51/0.4)]"
                   aria-label={t("capture.page", { n: i + 1 })}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}

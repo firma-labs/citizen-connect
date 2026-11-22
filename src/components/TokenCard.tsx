@@ -32,15 +32,16 @@ export function TokenCard({ token, pages, issuedAt }: { token: string; pages?: n
   const v = venue(token.slice(0, 2)) ?? venue(settings.venue);
 
   return (
-    <article className="relative mx-auto max-w-md overflow-hidden rounded-b-[var(--radius-panel)] bg-surface shadow-[0_1px_0_var(--color-rule),0_12px_32px_-16px_rgba(27,30,46,0.35)]">
-      {/* perforated tear-off edge */}
-      <div
-        aria-hidden
-        className="h-3 w-full"
-        style={{ background: "radial-gradient(circle at 8px -2px, var(--color-paper) 6px, transparent 6.5px) 0 0 / 16px 12px repeat-x" }}
-      />
-      <Seal className="absolute right-3 top-5 h-[5.5rem] w-[5.5rem] rotate-[-12deg]" />
-      <div className="px-6 pb-6 pt-3 text-center">
+    <article
+      className="relative mx-auto max-w-md overflow-hidden rounded-b-[var(--radius-panel)] bg-surface pt-3 shadow-[0_18px_40px_-22px_rgb(28_31_51/0.45)]"
+      style={{
+        // Perforated tear-off top edge, cut out of the slip itself.
+        WebkitMask: "radial-gradient(circle at 8px 0, transparent 6px, #000 6.5px) 0 0 / 16px 12px repeat-x, linear-gradient(#000, #000) 0 12px / 100% calc(100% - 12px) no-repeat",
+        mask: "radial-gradient(circle at 8px 0, transparent 6px, #000 6.5px) 0 0 / 16px 12px repeat-x, linear-gradient(#000, #000) 0 12px / 100% calc(100% - 12px) no-repeat",
+      }}
+    >
+      <Seal className="absolute right-3 top-7 h-[5.5rem] w-[5.5rem] rotate-[-12deg]" />
+      <div className="px-6 pb-6 pt-3 text-center [container-type:inline-size]">
         {/* Receipt header on the left, the office seal beside it */}
         <div className="min-h-20 pr-24 text-left">
           <p className="text-[1.1rem] font-bold text-indigo-800">{t("token.receipt")}</p>
@@ -53,7 +54,8 @@ export function TokenCard({ token, pages, issuedAt }: { token: string; pages?: n
         </div>
 
         <p className="mt-3 text-[0.95rem] text-ink-2">{t("token.yourToken")}</p>
-        <p className="token mt-1 whitespace-nowrap text-[clamp(1.9rem,10vw,2.9rem)] leading-none text-ink">{token}</p>
+        {/* Sized to the slip's own width (container query), so the token never clips. */}
+        <p className="token mt-1 whitespace-nowrap text-[clamp(1.35rem,10.5cqi,2.6rem)] leading-none tracking-[0.02em] text-ink">{token}</p>
 
         <div className="relative mx-auto mt-5 w-full max-w-[16rem]">
           {qr ? (
