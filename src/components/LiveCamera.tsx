@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { processPhoto, processVideoFrame, type ProcessedPage } from "@/lib/client/image";
+import { useI18n } from "@/lib/i18n";
+import { Button } from "./ui/Button";
+import { Notice } from "./ui/Notice";
 
 type CamState = "starting" | "live" | "denied" | "unavailable" | "error" | "paused";
 
@@ -20,6 +23,7 @@ export function LiveCamera({
   onCapture: (p: ProcessedPage) => void;
   onUseCameraApp: () => void;
 }) {
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [state, setState] = useState<CamState>("starting");
@@ -35,7 +39,7 @@ export function LiveCamera({
     stop();
     if (!navigator.mediaDevices?.getUserMedia) {
       setState("unavailable");
-      setError(window.isSecureContext ? "This browser has no camera API." : "Camera needs HTTPS. Open the https:// link.");
+      setError(window.isSecureContext ? "" : "https");
       return;
     }
     setState("starting");
@@ -104,59 +108,55 @@ export function LiveCamera({
 
   if (state === "denied") {
     return (
-      <div className="rounded-2xl border-2 border-danger-600 bg-danger-50 p-4">
-        <p className="text-lg font-bold">कॅमेरा परवानगी नाकारली · Camera permission denied</p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-[15px]">
-          <li>In Chrome, tap the icon left of the address bar (🔒 or ⚙).</li>
-          <li>Tap <b>Permissions → Camera → Allow</b>.</li>
-          <li>Come back here and tap <b>Try again</b>.</li>
+      <Notice tone="error" title={t("cam.denied.title")}>
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>{t("cam.denied.1")}</li>
+          <li>{t("cam.denied.2")}</li>
+          <li>{t("cam.denied.3")}</li>
         </ol>
-        <p className="mt-2 text-sm text-muted">
-          Android: also check Settings → Apps → Chrome → Permissions → Camera.
-        </p>
+        <p className="mt-2 text-[0.9rem]">{t("cam.denied.android")}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={() => void start()} className="rounded-xl bg-forest-700 px-4 py-3 font-semibold text-white">
-            Try again
-          </button>
-          <button onClick={onUseCameraApp} className="rounded-xl border-2 border-forest-700 bg-white px-4 py-3 font-semibold text-forest-800">
-            Use phone camera app instead
-          </button>
+          <Button icon="refresh" onClick={() => void start()}>
+            {t("cam.retry")}
+          </Button>
+          <Button variant="secondary" icon="camera" onClick={onUseCameraApp}>
+            {t("cam.useApp")}
+          </Button>
         </div>
-      </div>
+      </Notice>
     );
   }
 
   if (state === "unavailable" || state === "error") {
     return (
-      <div className="rounded-2xl border-2 border-warn-500 bg-warn-50 p-4">
-        <p className="font-bold">Live camera not available</p>
-        <p className="text-sm">{error || "No rear camera found."}</p>
-        <button onClick={onUseCameraApp} className="mt-3 rounded-xl bg-forest-700 px-4 py-3 font-semibold text-white">
-          Use phone camera app
-        </button>
-      </div>
+      <Notice tone="attention" title={t("cam.unavailable")}>
+        <p>{error === "https" ? t("cam.https") : error || t("cam.noRear")}</p>
+        <Button className="mt-3" icon="camera" onClick={onUseCameraApp}>
+          {t("cam.useApp")}
+        </Button>
+      </Notice>
     );
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-black">
+    <div className="relative overflow-hidden rounded-[var(--radius-panel)] bg-ink">
       <video ref={videoRef} playsInline muted className="block aspect-[3/4] w-full object-cover" />
       {/* A4 portrait guide */}
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
         <div className="relative aspect-[1/1.414] h-[88%] rounded-md border-2 border-dashed border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
           {["left-0 top-0 border-l-4 border-t-4", "right-0 top-0 border-r-4 border-t-4", "left-0 bottom-0 border-l-4 border-b-4", "right-0 bottom-0 border-r-4 border-b-4"].map((c) => (
-            <span key={c} className={`absolute h-8 w-8 border-green-300 ${c}`} />
+            <span key={c} className={`absolute h-8 w-8 border-marigold-500 ${c}`} />
           ))}
         </div>
       </div>
       {state !== "live" && (
-        <div className="absolute inset-0 grid place-items-center text-white">{state === "paused" ? "Paused" : "Starting camera…"}</div>
+        <div className="absolute inset-0 grid place-items-center text-white">{state === "paused" ? t("cam.paused") : t("cam.starting")}</div>
       )}
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-6 bg-gradient-to-t from-black/70 to-transparent p-4">
         <button
           onClick={() => void capture()}
           disabled={busy || state !== "live"}
-          aria-label="Capture page"
+          aria-label={t("cam.capture")}
           className="h-20 w-20 rounded-full border-[6px] border-white bg-white/30 disabled:opacity-40 active:bg-white"
         />
       </div>

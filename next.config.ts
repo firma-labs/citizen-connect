@@ -10,6 +10,8 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "")
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // The dev indicator badge sits over the bottom action bars on phones.
+  devIndicators: false,
   allowedDevOrigins: ["**.ts.net", ...allowedDevOrigins],
   turbopack: {
     rules: {

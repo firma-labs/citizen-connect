@@ -1,20 +1,24 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { BigButton, Header, Page } from "@/components/Header";
 import { RescanPanel } from "@/components/RescanPanel";
-import { StatusBadge } from "@/components/StatusBadge";
+import { AppBar, Screen } from "@/components/ui/AppBar";
+import { Button } from "@/components/ui/Button";
+import { Field, SectionTitle, inputClass, type Attention } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
+import { Notice } from "@/components/ui/Notice";
+import { StatusTag } from "@/components/ui/StatusTag";
 import { useSettings } from "@/lib/client/settings";
 import { fetchApplication, requestRead, syncNow } from "@/lib/client/sync";
-import { CATEGORIES, DEPARTMENTS, LANGUAGES, PAGE_TYPES, PRIORITIES, dept } from "@/lib/reference";
+import { useI18n, type MessageKey } from "@/lib/i18n";
+import { CATEGORIES, DEPARTMENTS, LANGUAGES, PAGE_TYPES, PRIORITIES, dept, refLabel } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
 import type { Application, Confidence, VerifiedFields } from "@/lib/types";
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<Header title="तपासणी · Verify" back="/queue" />}>
+    <Suspense fallback={<AppBar title="verify.title" back="/queue" />}>
       <Verify />
     </Suspense>
   );
@@ -69,9 +73,45 @@ function fromExtraction(app: Application): VerifiedFields {
   };
 }
 
+/** Fields that can carry an AI confidence, in reading order, with their labels. */
+const CHECKABLE: { key: keyof VerifiedFields; label: MessageKey }[] = [
+  { key: "applicant_name_original", label: "field.nameOriginal" },
+  { key: "applicant_name_roman", label: "field.nameRoman" },
+  { key: "mobile", label: "field.mobile" },
+  { key: "address", label: "field.address" },
+  { key: "locality", label: "field.locality" },
+  { key: "taluka", label: "field.taluka" },
+  { key: "district", label: "field.district" },
+  { key: "letter_date", label: "field.date" },
+  { key: "subject", label: "field.subject" },
+  { key: "category", label: "field.category" },
+  { key: "department", label: "field.department" },
+];
+
+/** The AI names fields in English ("address", "mobile"); show the UI's own label instead. */
+const UNCLEAR_LABELS: Record<string, MessageKey> = {
+  applicant_name: "field.nameOriginal",
+  applicant_name_original: "field.nameOriginal",
+  applicant_name_roman: "field.nameRoman",
+  name: "field.nameOriginal",
+  mobile: "field.mobile",
+  address: "field.address",
+  locality: "field.locality",
+  taluka: "field.taluka",
+  district: "field.district",
+  letter_date: "field.date",
+  date: "field.date",
+  subject: "field.subject",
+  signatories: "field.signatories",
+  attachments: "field.attachments",
+};
+
+const toAttention = (c: Confidence | undefined): Attention => (c === "low" ? "low" : c === "medium" ? "medium" : undefined);
+
 function Verify() {
   const token = useSearchParams().get("t") ?? "";
   const [settings] = useSettings();
+  const { t, date, locale } = useI18n();
   const [app, setApp] = useState<Application | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState<VerifiedFields | null>(null);
@@ -80,6 +120,7 @@ function Verify() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number | null>(null);
+  const [viewing, setViewing] = useState(0);
   const [rescanning, setRescanning] = useState(false);
   const [pollKey, setPollKey] = useState(0);
   const [seededFrom, setSeededFrom] = useState<string | null>(null); // read_at of the AI result in the form
@@ -99,52 +140,57 @@ function Verify() {
   useEffect(() => {
     if (!token) return;
     let stop = false;
-    let t: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout>;
     const tick = async () => {
       const a = await load();
       if (stop) return;
-      if (!a || a.status === "captured" || a.status === "reading") t = setTimeout(tick, 3000);
+      if (!a || a.status === "captured" || a.status === "reading") timer = setTimeout(tick, 3000);
     };
     void tick();
     return () => {
       stop = true;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [token, load, pollKey]);
 
-  // Fill the form from each new AI result — the first one, and again after a rescan or retry.
-  useEffect(() => {
-    const readAt = app?.extraction?.read_at ?? null;
-    if (app?.status === "read" && readAt && readAt !== seededFrom) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- seed the editable form from a new AI result
-      setForm(fromExtraction(app));
-      setSeededFrom(readAt);
-      setConfirmed(false);
-    }
-  }, [app, seededFrom]);
+  // Fill the form from each new AI result — the first one, and again after a rescan
+  // or retry. Adjusting state during render (not in an effect) avoids a second pass.
+  const readAt = app?.extraction?.read_at ?? null;
+  if (app?.status === "read" && readAt && readAt !== seededFrom) {
+    setSeededFrom(readAt);
+    setForm(fromExtraction(app));
+    setConfirmed(false);
+  }
 
-  const conf = useMemo(() => {
+  const attentionOf = useMemo(() => {
     const c = app?.extraction?.reader.confidence;
     const r = app?.extraction?.reasoner.confidence;
-    return (key: string): Confidence | undefined => {
-      const map: Record<string, Confidence | undefined> = {
-        applicant_name_original: c?.applicant_name,
-        applicant_name_roman: c?.applicant_name,
-        mobile: c?.mobile,
-        address: c?.address,
-        locality: c?.locality,
-        taluka: c?.taluka,
-        district: c?.district,
-        letter_date: c?.letter_date,
-        subject: c?.subject,
-        category: r?.category,
-        department: r?.department,
-      };
-      return map[key];
+    const map: Partial<Record<keyof VerifiedFields, Confidence | undefined>> = {
+      applicant_name_original: c?.applicant_name,
+      applicant_name_roman: c?.applicant_name,
+      mobile: c?.mobile,
+      address: c?.address,
+      locality: c?.locality,
+      taluka: c?.taluka,
+      district: c?.district,
+      letter_date: c?.letter_date,
+      subject: c?.subject,
+      category: r?.category,
+      department: r?.department,
     };
+    return (k: keyof VerifiedFields) => toAttention(map[k]);
   }, [app]);
 
-  if (!token) return <Missing />;
+  if (!token) {
+    return (
+      <>
+        <AppBar title="verify.title" back="/queue" />
+        <Screen>
+          <Notice tone="error">{t("verify.notOnServer")}</Notice>
+        </Screen>
+      </>
+    );
+  }
 
   const set = <K extends keyof VerifiedFields>(k: K, v: VerifiedFields[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
 
@@ -176,396 +222,490 @@ function Verify() {
     ? Array.from({ length: app.page_count }, (_, i) => `/api/applications/${encodeURIComponent(token)}/pages/${i}?v=${app.pages_version ?? 0}`)
     : [];
   const canRescan = status === "read" || status === "read_failed" || status === "captured";
+  const showForm = !rescanning && !!form && (status === "read" || (status === "read_failed" && manual));
+  const done = status === "routed" || status === "in_progress" || status === "closed";
+  const pageType = (i: number) => {
+    const code = app?.extraction?.reader.pages[i]?.page_type;
+    return code ? refLabel(PAGE_TYPES.find((p) => p.code === code), locale) : null;
+  };
+  const flagged = form && app?.extraction ? CHECKABLE.filter((f) => attentionOf(f.key)) : [];
+  const mobileNorm = form ? normaliseMobile(form.mobile) : null;
 
   return (
     <>
-      <Header title="तपासणी · Verify" back="/queue" />
-      <Page>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="token-text whitespace-nowrap text-xl font-extrabold">{token}</span>
-          {status && <StatusBadge status={status} />}
+      <AppBar title="verify.title" back="/queue" />
+      <Screen wide>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <h1 className="token text-[1.5rem]">{token}</h1>
+          {status && <StatusTag status={status} />}
         </div>
 
-        {loadError && !app && (
-          <p className="rounded-xl bg-danger-50 p-3 text-danger-600">
-            {loadError === "not found" ? "Not on the server yet — it may still be uploading from the capture phone." : loadError}
-          </p>
-        )}
+        {loadError && !app && <Notice tone="error">{loadError === "not found" ? t("verify.notOnServer") : loadError}</Notice>}
 
-        {pageUrls.length > 0 && (
-          <div className="-mx-4 mb-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
-            {pageUrls.map((u, i) => (
-              <button key={u} onClick={() => setZoom(i)} className="relative w-40 shrink-0 snap-start overflow-hidden rounded-xl border-2 border-line bg-white">
-                {/* eslint-disable-next-line @next/next/no-img-element -- authenticated API image */}
-                <img src={u} alt={`Page ${i + 1}`} className="aspect-[3/4] w-full object-cover" loading="lazy" />
-                <span className="absolute left-1.5 top-1.5 rounded-full bg-forest-700 px-2 text-sm font-bold text-white">{i + 1}</span>
-                {app?.extraction?.reader.pages[i] && (
-                  <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-xs text-white">
-                    {PAGE_TYPES.find((p) => p.code === app.extraction!.reader.pages[i].page_type)?.en}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {canRescan && !rescanning && app && app.pages_received.length === app.page_count && (
-          <button
-            onClick={() => setRescanning(true)}
-            className="mb-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-forest-700 bg-white font-semibold text-forest-800"
-          >
-            📷 पुन्हा स्कॅन करा · Rescan pages
-          </button>
-        )}
-
-        {rescanning && (
-          <RescanPanel
-            token={token}
-            pageUrls={pageUrls}
-            onCancel={() => setRescanning(false)}
-            onDone={() => {
-              setRescanning(false);
-              setForm(null);
-              setManual(false);
-              setConfirmed(false);
-              setPollKey((k) => k + 1);
-              window.scrollTo({ top: 0 });
-            }}
-          />
-        )}
-
-        {!rescanning && (status === "captured" || status === "reading") && (
-          <div className="rounded-2xl bg-blue-50 p-5 text-center">
-            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" />
-            <p className="font-bold">AI वाचन सुरू आहे · AI is reading the pages</p>
-            <p className="text-sm text-muted">
-              {app && app.pages_received.length < app.page_count
-                ? `Waiting for pages: ${app.pages_received.length}/${app.page_count} uploaded`
-                : "Usually under 30 seconds. The token is already issued — the citizen does not need to wait."}
-            </p>
-          </div>
-        )}
-
-        {!rescanning && status === "read_failed" && !form && (
-          <div className="space-y-3 rounded-2xl border-2 border-danger-600 bg-danger-50 p-4">
-            <p className="font-bold">AI could not read this application</p>
-            <p className="text-sm">{app?.read_error}</p>
-            <div className="flex gap-2">
-              <button onClick={() => void requestRead(token).then(load)} className="h-12 flex-1 rounded-xl bg-forest-700 font-semibold text-white">
-                Retry AI
-              </button>
-              <button
-                onClick={() => {
-                  setManual(true);
-                  setForm(EMPTY);
-                }}
-                className="h-12 flex-1 rounded-xl border-2 border-forest-700 bg-white font-semibold text-forest-800"
-              >
-                Enter manually
-              </button>
-            </div>
-          </div>
-        )}
-
-        {(status === "routed" || status === "in_progress" || status === "closed") && app && <Saved app={app} />}
-
-        {!rescanning && form && (status === "read" || (status === "read_failed" && manual)) && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void save();
-            }}
-            className="space-y-6"
-          >
-            {app?.extraction && (
-              <p className="rounded-xl bg-forest-50 p-3 text-sm">
-                AI-filled. <b className="rounded bg-warn-50 px-1 ring-1 ring-warn-500">Yellow fields</b> are low confidence — check them
-                against the letter. Nothing is saved until you confirm below.
-              </p>
-            )}
-
-            {app?.extraction && app.extraction.reader.unclear.length > 0 && (
-              <section className="rounded-2xl border-2 border-warn-500 bg-warn-50 p-3">
-                <h3 className="font-bold">न वाचता आलेले शब्द · Words the AI could not read</h3>
-                <ul className="mt-1 space-y-1">
-                  {app.extraction.reader.unclear.map((u, i) => (
-                    <li key={i} className="text-[15px]">
-                      <span className="font-mono">{u.text}</span>
-                      <span className="text-sm text-muted"> — page {u.page_number}{u.field ? `, ${u.field}` : ""}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <Section mr="अर्जदार" en="Applicant">
-              <Text label="नाव (मूळ लिपी) · Name (original)" k="applicant_name_original" form={form} set={set} conf={conf} />
-              <Text label="नाव (रोमन) · Name (romanised)" k="applicant_name_roman" form={form} set={set} conf={conf} />
-              <Text label="मोबाईल · Mobile" k="mobile" form={form} set={set} conf={conf} inputMode="numeric" />
-              {form.mobile && !isValidMobile(normaliseMobile(form.mobile)) && (
-                <p className="-mt-2 text-sm font-semibold text-danger-600">Not a valid 10-digit mobile — SMS will not be sent.</p>
-              )}
-              {!form.mobile && <p className="-mt-2 text-sm text-warn-700">No mobile — the citizen will not get an SMS.</p>}
-              <Text label="पत्ता · Address" k="address" form={form} set={set} conf={conf} multiline />
-              <div className="grid grid-cols-2 gap-3">
-                <Text label="गाव/परिसर · Locality" k="locality" form={form} set={set} conf={conf} />
-                <Text label="तालुका · Taluka" k="taluka" form={form} set={set} conf={conf} />
+        <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-8">
+          {/* Letter pages: a strip on phones, a large side-by-side viewer on wide screens */}
+          {pageUrls.length > 0 && (
+            <aside className="mb-5 lg:sticky lg:top-20 lg:mb-0">
+              <h2 className="sr-only">{t("verify.pages")}</h2>
+              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 lg:hidden">
+                {pageUrls.map((u, i) => (
+                  <button
+                    key={u}
+                    onClick={() => setZoom(i)}
+                    aria-label={t("verify.openPage", { n: i + 1 })}
+                    className="relative w-36 shrink-0 snap-start overflow-hidden rounded-[var(--radius-control)] border border-rule bg-surface"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- API image */}
+                    <img src={u} alt="" className="aspect-[3/4] w-full object-cover" loading="lazy" />
+                    <span className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-2 text-[0.85rem] font-bold text-white">{i + 1}</span>
+                    {pageType(i) && <span className="absolute inset-x-0 bottom-0 bg-ink/75 px-2 py-0.5 text-[0.8rem] text-white">{pageType(i)}</span>}
+                  </button>
+                ))}
               </div>
-              <Text label="जिल्हा · District" k="district" form={form} set={set} conf={conf} />
-            </Section>
-
-            <Section mr="अर्ज" en="Letter">
-              <div className="grid grid-cols-2 gap-3">
-                <Text label="दिनांक · Date" k="letter_date" form={form} set={set} conf={conf} type="date" />
-                <Select label="भाषा · Language" value={form.language} onChange={(v) => set("language", v as VerifiedFields["language"])} options={LANGUAGES.map((l) => [l.code, `${l.mr} · ${l.en}`])} />
-              </div>
-              <Text label="विषय · Subject" k="subject" form={form} set={set} conf={conf} multiline />
-              <Area label="सारांश (इंग्रजी) · Summary (English)" value={form.summary_en} onChange={(v) => set("summary_en", v)} />
-              <Area label="सारांश (मूळ भाषा) · Summary (letter's language)" value={form.summary_local} onChange={(v) => set("summary_local", v)} />
-            </Section>
-
-            <Section mr="वर्गीकरण व विभाग" en="Category & routing">
-              <Select label="वर्ग · Category" value={form.category} low={conf("category") === "low"} onChange={(v) => set("category", v as VerifiedFields["category"])} options={CATEGORIES.map((c) => [c.code, `${c.mr} · ${c.en}`])} />
-              <Select
-                label="मुख्य विभाग · Primary department"
-                value={form.department}
-                low={conf("department") === "low"}
-                onChange={(v) => set("department", v as VerifiedFields["department"])}
-                options={DEPARTMENTS.map((d) => [d.code, `${d.code} — ${d.name} (${d.sla}d)`])}
-              />
-              <div>
-                <div className="mb-1 font-semibold">संबंधित इतर विभाग · Also concerns</div>
-                <div className="flex flex-wrap gap-2">
-                  {DEPARTMENTS.filter((d) => d.code !== form.department).map((d) => {
-                    const on = form.secondary_departments.includes(d.code);
-                    return (
+              <div className="hidden lg:block">
+                <button
+                  onClick={() => setZoom(viewing)}
+                  aria-label={t("verify.openPage", { n: viewing + 1 })}
+                  className="block w-full overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-surface"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- API image */}
+                  <img src={pageUrls[Math.min(viewing, pageUrls.length - 1)]} alt="" className="max-h-[calc(100vh-11rem)] w-full object-contain" />
+                </button>
+                {pageUrls.length > 1 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {pageUrls.map((u, i) => (
                       <button
-                        type="button"
-                        key={d.code}
-                        onClick={() =>
-                          set("secondary_departments", on ? form.secondary_departments.filter((x) => x !== d.code) : [...form.secondary_departments, d.code])
-                        }
-                        className={`min-h-11 rounded-full border-2 px-3 text-sm font-semibold ${on ? "border-forest-700 bg-forest-700 text-white" : "border-line bg-white"}`}
+                        key={u}
+                        onClick={() => setViewing(i)}
+                        aria-current={viewing === i}
+                        className={`h-11 min-w-11 rounded-full px-3 font-semibold ${viewing === i ? "bg-ink text-white" : "bg-surface text-ink ring-1 ring-rule-strong"}`}
                       >
-                        {d.code}
+                        {i + 1}
+                        {pageType(i) ? <span className="ml-1.5 font-normal opacity-80">{pageType(i)}</span> : null}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+                )}
+              </div>
+              {canRescan && !rescanning && app && app.pages_received.length === app.page_count && (
+                <Button variant="secondary" icon="camera" block className="mt-3" onClick={() => setRescanning(true)}>
+                  {t("verify.rescan")}
+                </Button>
+              )}
+            </aside>
+          )}
+
+          <div className="min-w-0">
+            {rescanning && (
+              <RescanPanel
+                token={token}
+                pageUrls={pageUrls}
+                onCancel={() => setRescanning(false)}
+                onDone={() => {
+                  setRescanning(false);
+                  setForm(null);
+                  setManual(false);
+                  setConfirmed(false);
+                  setPollKey((k) => k + 1);
+                  window.scrollTo({ top: 0 });
+                }}
+              />
+            )}
+
+            {!rescanning && (status === "captured" || status === "reading") && (
+              <div className="flex items-start gap-4 rounded-[var(--radius-panel)] border border-rule bg-surface p-5" role="status">
+                <span className="mt-1 h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-700" aria-hidden />
+                <div>
+                  <p className="font-bold">{t("verify.reading.title")}</p>
+                  <p className="text-ink-2">
+                    {app && app.pages_received.length < app.page_count
+                      ? t("verify.reading.wait", { a: app.pages_received.length, b: app.page_count })
+                      : t("verify.reading.body")}
+                  </p>
                 </div>
               </div>
-              <Select label="प्राधान्य · Priority" value={form.priority} onChange={(v) => set("priority", v as VerifiedFields["priority"])} options={PRIORITIES.map((p) => [p.code, `${p.mr} · ${p.en}`])} />
-              {app?.extraction?.reasoner.priority_reason && <p className="-mt-2 text-sm text-muted">AI: {app.extraction.reasoner.priority_reason}</p>}
-            </Section>
-
-            <Section mr="इतर तपशील" en="Other details (one per line)">
-              <Lines label="पूर्वीचे पाठपुरावे · Prior follow-ups" value={form.prior_follow_ups} onChange={(v) => set("prior_follow_ups", v)} />
-              <Lines label="सोबतची कागदपत्रे · Attachments" value={form.attachments} onChange={(v) => set("attachments", v)} />
-              <Lines label="स्वाक्षरी करणारे · Signatories" value={form.signatories} onChange={(v) => set("signatories", v)} />
-            </Section>
-
-            {app?.extraction && (
-              <details className="rounded-2xl bg-white p-3 shadow-sm">
-                <summary className="min-h-11 cursor-pointer font-bold">पूर्ण मजकूर · Full transcription</summary>
-                {app.extraction.reader.pages.map((p) => (
-                  <div key={p.page_number} className="mt-3">
-                    <div className="text-sm font-semibold text-muted">
-                      Page {p.page_number} · {PAGE_TYPES.find((t) => t.code === p.page_type)?.en}
-                    </div>
-                    <pre className="mt-1 whitespace-pre-wrap rounded-lg bg-forest-50 p-3 font-sans text-[15px] leading-relaxed">{p.transcription}</pre>
-                  </div>
-                ))}
-                <p className="mt-3 text-xs text-muted">
-                  {app.extraction.engine.reader} · read {Math.round(app.extraction.timings_ms.reader / 1000)}s + reason{" "}
-                  {Math.round(app.extraction.timings_ms.reasoner / 1000)}s
-                </p>
-              </details>
             )}
 
-            <label className="flex items-start gap-3 rounded-2xl border-2 border-forest-700 bg-white p-4">
-              <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 h-7 w-7 shrink-0 accent-forest-700" />
-              <span>
-                <b>मी हे तपशील मूळ अर्जाशी तपासले आहेत.</b>
-                <span className="block text-sm text-muted">I have checked these details against the original letter.</span>
-              </span>
-            </label>
-            {saveError && <p className="rounded-xl bg-danger-50 p-3 text-danger-600">{saveError}</p>}
-            <BigButton type="submit" mr={saving ? "जतन होत आहे…" : "जतन करा व SMS पाठवा"} en="Save, route & send SMS" disabled={!confirmed || saving} />
-          </form>
-        )}
+            {!rescanning && status === "read_failed" && !form && (
+              <Notice tone="error" title={t("verify.failed.title")}>
+                <p>{app?.read_error}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button icon="refresh" onClick={() => void requestRead(token).then(load)}>
+                    {t("verify.failed.retry")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setManual(true);
+                      setForm(EMPTY);
+                    }}
+                  >
+                    {t("verify.failed.manual")}
+                  </Button>
+                </div>
+              </Notice>
+            )}
 
-        {zoom !== null && (
-          <div className="fixed inset-0 z-30 flex flex-col bg-black" role="dialog">
-            <div className="flex items-center justify-between p-3 text-white">
-              <span className="font-bold">Page {zoom + 1} / {pageUrls.length}</span>
-              <div className="flex gap-2">
-                <button disabled={zoom === 0} onClick={() => setZoom(zoom - 1)} className="h-11 w-11 rounded-lg bg-white/15 disabled:opacity-30">‹</button>
-                <button disabled={zoom === pageUrls.length - 1} onClick={() => setZoom(zoom + 1)} className="h-11 w-11 rounded-lg bg-white/15 disabled:opacity-30">›</button>
-                <button onClick={() => setZoom(null)} className="h-11 rounded-lg bg-white/15 px-4">Close</button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto" style={{ touchAction: "pinch-zoom pan-x pan-y" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- full-resolution page */}
-              <img src={pageUrls[zoom]} alt="" className="mx-auto w-full max-w-none" />
-            </div>
+            {done && app && renderSaved(app)}
+
+            {showForm && form && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void save();
+                }}
+                className="space-y-8"
+              >
+                {app?.extraction && (
+                  renderAttention(flagged, app.extraction.reader.unclear)
+                )}
+
+                <section className="space-y-5">
+                  <SectionTitle k="section.applicant" />
+                  <TextField id="applicant_name_original" label="field.nameOriginal" form={form} set={set} attention={attentionOf("applicant_name_original")} />
+                  <TextField id="applicant_name_roman" label="field.nameRoman" form={form} set={set} attention={attentionOf("applicant_name_roman")} />
+                  <TextField
+                    id="mobile"
+                    label="field.mobile"
+                    form={form}
+                    set={set}
+                    attention={attentionOf("mobile")}
+                    inputMode="tel"
+                    error={form.mobile && !isValidMobile(mobileNorm) ? t("field.mobile.invalid") : undefined}
+                    help={!form.mobile ? <span className="text-marigold-700">{t("field.mobile.missing")}</span> : undefined}
+                  />
+                  <TextField id="address" label="field.address" form={form} set={set} attention={attentionOf("address")} multiline />
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <TextField id="locality" label="field.locality" form={form} set={set} attention={attentionOf("locality")} />
+                    <TextField id="taluka" label="field.taluka" form={form} set={set} attention={attentionOf("taluka")} />
+                  </div>
+                  <TextField id="district" label="field.district" form={form} set={set} attention={attentionOf("district")} />
+                </section>
+
+                <section className="space-y-5">
+                  <SectionTitle k="section.letter" />
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <TextField id="letter_date" label="field.date" form={form} set={set} attention={attentionOf("letter_date")} type="date" />
+                    <Field id="language" label="field.language">
+                      <select id="language" value={form.language} onChange={(e) => set("language", e.target.value as VerifiedFields["language"])} className={inputClass()}>
+                        {LANGUAGES.map((l) => (
+                          <option key={l.code} value={l.code}>
+                            {refLabel(l, locale)}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                  <TextField id="subject" label="field.subject" form={form} set={set} attention={attentionOf("subject")} multiline />
+                  <Field id="summary_en" label="field.summaryEn">
+                    <textarea id="summary_en" lang="en" rows={5} value={form.summary_en} onChange={(e) => set("summary_en", e.target.value)} className={inputClass()} />
+                  </Field>
+                  <Field id="summary_local" label="field.summaryLocal">
+                    <textarea id="summary_local" rows={5} value={form.summary_local} onChange={(e) => set("summary_local", e.target.value)} className={inputClass()} />
+                  </Field>
+                </section>
+
+                <section className="space-y-5">
+                  <SectionTitle k="section.routing" />
+                  <Field id="category" label="field.category" attention={attentionOf("category")}>
+                    <select id="category" value={form.category} onChange={(e) => set("category", e.target.value as VerifiedFields["category"])} className={inputClass(attentionOf("category"))}>
+                      {CATEGORIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {refLabel(c, locale)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field id="department" label="field.department" attention={attentionOf("department")}>
+                    <select id="department" value={form.department} onChange={(e) => set("department", e.target.value as VerifiedFields["department"])} className={inputClass(attentionOf("department"))}>
+                      {DEPARTMENTS.map((d) => (
+                        <option key={d.code} value={d.code}>
+                          {refLabel(d, locale)} — {t("field.days", { d: d.sla })}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <fieldset>
+                    <legend className="font-semibold">{t("field.secondary")}</legend>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {DEPARTMENTS.filter((d) => d.code !== form.department).map((d) => {
+                        const on = form.secondary_departments.includes(d.code);
+                        return (
+                          <button
+                            type="button"
+                            key={d.code}
+                            aria-pressed={on}
+                            title={refLabel(d, locale)}
+                            onClick={() =>
+                              set("secondary_departments", on ? form.secondary_departments.filter((x) => x !== d.code) : [...form.secondary_departments, d.code])
+                            }
+                            className={`flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[0.92rem] font-semibold ${on ? "bg-indigo-700 text-white" : "bg-surface text-ink ring-1 ring-inset ring-rule-strong"}`}
+                          >
+                            {on && <Icon name="check" size={16} />}
+                            {refLabel(d, locale)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                  <Field
+                    id="priority"
+                    label="field.priority"
+                    help={app?.extraction?.reasoner.priority_reason ? t("field.priority.reason", { r: app.extraction.reasoner.priority_reason }) : undefined}
+                  >
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup">
+                      {PRIORITIES.map((p) => (
+                        <label
+                          key={p.code}
+                          className={`flex min-h-12 cursor-pointer items-center justify-center rounded-[var(--radius-control)] px-3 font-semibold ${form.priority === p.code ? (p.code === "urgent" ? "bg-red-600 text-white" : "bg-indigo-700 text-white") : "bg-surface ring-1 ring-inset ring-rule-strong"}`}
+                        >
+                          <input type="radio" name="priority" value={p.code} checked={form.priority === p.code} onChange={() => set("priority", p.code)} className="sr-only" />
+                          {refLabel(p, locale)}
+                        </label>
+                      ))}
+                    </div>
+                  </Field>
+                </section>
+
+                <section className="space-y-5">
+                  <SectionTitle k="section.other" />
+                  <Lines id="prior_follow_ups" label="field.followUps" value={form.prior_follow_ups} onChange={(v) => set("prior_follow_ups", v)} />
+                  <Lines id="attachments" label="field.attachments" value={form.attachments} onChange={(v) => set("attachments", v)} />
+                  <Lines id="signatories" label="field.signatories" value={form.signatories} onChange={(v) => set("signatories", v)} />
+                </section>
+
+                {app?.extraction && (
+                  <details className="rounded-[var(--radius-panel)] border border-rule bg-surface">
+                    <summary className="flex min-h-14 cursor-pointer items-center gap-2 px-4 font-semibold">
+                      <Icon name="doc" className="text-indigo-700" />
+                      {t("verify.transcription")}
+                    </summary>
+                    <div className="space-y-4 border-t border-rule p-4">
+                      {app.extraction.reader.pages.map((p) => (
+                        <div key={p.page_number}>
+                          <p className="text-[0.9rem] font-semibold text-ink-3">
+                            {t("capture.page", { n: p.page_number })} · {refLabel(PAGE_TYPES.find((x) => x.code === p.page_type), locale)}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap leading-relaxed">{p.transcription}</p>
+                        </div>
+                      ))}
+                      <p className="text-[0.85rem] text-ink-3">
+                        {t("verify.engine", {
+                          e: app.extraction.engine.reader.replace(/^anthropic:/, ""),
+                          s: Math.round((app.extraction.timings_ms.reader + app.extraction.timings_ms.reasoner) / 1000),
+                        })}
+                      </p>
+                    </div>
+                  </details>
+                )}
+
+                <div className="rounded-[var(--radius-panel)] border-2 border-indigo-700 bg-surface p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-7 w-7 shrink-0 accent-indigo-700" />
+                    <span className="font-semibold">{t("verify.confirm")}</span>
+                  </label>
+                  {saveError && (
+                    <Notice tone="error" role="alert" className="mt-3">
+                      {saveError}
+                    </Notice>
+                  )}
+                  <Button type="submit" size="lg" block className="mt-4" disabled={!confirmed || saving}>
+                    {saving ? t("verify.saving") : t("verify.save")}
+                  </Button>
+                  <p className="mt-2 text-center text-[0.88rem] text-ink-3">{t("verify.nothingSaved")}</p>
+                </div>
+              </form>
+            )}
           </div>
-        )}
-      </Page>
-    </>
-  );
-}
-
-function Saved({ app }: { app: Application }) {
-  const v = app.verified!;
-  const d = dept(v.department);
-  const sms = app.sms.at(-1);
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl bg-forest-700 p-5 text-white">
-        <div className="text-2xl font-extrabold">✓ जतन केले · Saved</div>
-        <div className="mt-1">
-          → <b>{d?.name}</b> {v.secondary_departments.length ? `(also: ${v.secondary_departments.join(", ")})` : ""}
         </div>
-        {app.sla_due_at && <div className="text-sm text-white/85">SLA due {new Date(app.sla_due_at).toLocaleDateString()} ({d?.sla} days)</div>}
-      </div>
-      {sms && (
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="text-sm font-bold">
-            SMS {sms.status === "logged" ? "(pilot: logged, not sent)" : sms.status} {sms.to ? `→ +91 ${sms.to}` : ""}
+      </Screen>
+
+      {zoom !== null && (
+        <div className="fixed inset-0 z-30 flex flex-col bg-ink" role="dialog" aria-modal="true" aria-label={t("zoom.page", { a: zoom + 1, b: pageUrls.length })}>
+          <div className="flex items-center justify-between gap-2 p-3 text-white" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+            <span className="font-semibold">{t("zoom.page", { a: zoom + 1, b: pageUrls.length })}</span>
+            <div className="flex gap-2">
+              <button disabled={zoom === 0} onClick={() => setZoom(zoom - 1)} aria-label={t("capture.earlier")} className="grid h-12 w-12 place-items-center rounded-full bg-white/15 disabled:opacity-30">
+                <Icon name="back" />
+              </button>
+              <button
+                disabled={zoom === pageUrls.length - 1}
+                onClick={() => setZoom(zoom + 1)}
+                aria-label={t("capture.later")}
+                className="grid h-12 w-12 place-items-center rounded-full bg-white/15 disabled:opacity-30"
+              >
+                <Icon name="next" />
+              </button>
+              <button onClick={() => setZoom(null)} className="flex h-12 items-center gap-2 rounded-full bg-white/15 px-4 font-semibold">
+                <Icon name="close" size={20} />
+                {t("zoom.close")}
+              </button>
+            </div>
           </div>
-          {sms.detail && <div className="text-sm text-muted">{sms.detail}</div>}
-          <p className="mt-2 rounded-lg bg-forest-50 p-3 text-[15px]">{sms.body}</p>
+          <div className="flex-1 overflow-auto" style={{ touchAction: "pinch-zoom pan-x pan-y" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- full-resolution page */}
+            <img src={pageUrls[zoom]} alt="" className="mx-auto w-full max-w-4xl" />
+          </div>
         </div>
       )}
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="font-bold">{v.applicant_name_original} {v.applicant_name_roman ? `· ${v.applicant_name_roman}` : ""}</div>
-        <p className="mt-1 text-[15px]">{v.summary_en}</p>
-        <p className="mt-1 text-[15px] text-muted">{v.summary_local}</p>
-      </div>
-      <details className="rounded-2xl bg-white p-4 shadow-sm">
-        <summary className="min-h-11 cursor-pointer font-bold">Audit log ({app.audit.length})</summary>
-        <ul className="mt-2 space-y-1 text-sm">
-          {app.audit.map((a, i) => (
-            <li key={i} className="border-b border-line pb-1">
-              <span className="text-muted">{new Date(a.at).toLocaleString()}</span> · <b>{a.by}</b> · {a.action}
-              {a.field ? ` · ${a.field}: ${JSON.stringify(a.from)} → ${JSON.stringify(a.to)}` : ""}
-            </li>
-          ))}
-        </ul>
-      </details>
-      <BigButton href="/capture" mr="पुढील अर्ज" en="Scan next application" />
-      <BigButton href="/queue" variant="secondary" mr="अर्ज यादी" en="Back to queue" />
-    </div>
-  );
-}
-
-function Missing() {
-  return (
-    <>
-      <Header title="तपासणी · Verify" back="/queue" />
-      <Page>
-        <p>No token given. <Link href="/queue" className="underline">Open the queue</Link>.</p>
-      </Page>
     </>
   );
-}
 
-function Section({ mr, en, children }: { mr: string; en: string; children: React.ReactNode }) {
-  return (
-    <section className="space-y-4 rounded-2xl bg-white p-4 shadow-sm">
-      <h3 className="text-lg font-extrabold">
-        {mr} <span className="text-sm font-semibold text-muted">· {en}</span>
-      </h3>
-      {children}
-    </section>
-  );
+  function renderAttention(flagged: { key: keyof VerifiedFields; label: MessageKey }[], unclear: { page_number: number; field: string | null; text: string }[]) {
+    if (!flagged.length && !unclear.length) {
+      return <Notice tone="done">{t("verify.attention.none")}</Notice>;
+    }
+    return (
+      <section aria-labelledby="attention-title" className="rounded-[var(--radius-panel)] border-l-[6px] border-marigold-500 bg-marigold-50 p-4">
+        <h2 id="attention-title" className="flex items-center gap-2 text-[1.15rem] font-bold">
+          <Icon name="alert" className="text-marigold-700" />
+          {flagged.length === 1 ? t("verify.attention.one") : t("verify.attention.title", { n: flagged.length })}
+        </h2>
+        <p className="mt-1 text-ink-2">{t("verify.attention.body")}</p>
+        {flagged.length > 0 && (
+          <ul className="mt-3 space-y-1">
+            {flagged.map((f) => (
+              <li key={f.key}>
+                <a href={`#field-${f.key}`} className="inline-flex min-h-10 items-center gap-2 font-semibold text-indigo-800 underline underline-offset-4">
+                  {t(f.label)}
+                  {attentionOf(f.key) === "medium" && <span className="font-normal text-ink-3 no-underline">— {t("verify.probably")}</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+        {unclear.length > 0 && (
+          <div className="mt-4 border-t border-marigold-200 pt-3">
+            <p className="font-semibold">{t("verify.unreadable")}</p>
+            <ul className="mt-1 space-y-1">
+              {unclear.map((u, i) => (
+                <li key={i}>
+                  <span className="rounded bg-surface px-1.5 py-0.5 font-semibold">{u.text}</span>
+                  <span className="text-[0.9rem] text-ink-3">
+                    {" "}
+                    — {t("verify.onPage", { p: u.page_number })}
+                    {u.field ? `, ${UNCLEAR_LABELS[u.field] ? t(UNCLEAR_LABELS[u.field]) : u.field}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  function renderSaved(app: Application) {
+    const v = app.verified!;
+    const d = dept(v.department);
+    const sms = app.sms.at(-1);
+    return (
+      <div className="space-y-5">
+        <Notice tone="done" title={t("saved.title")}>
+          <p className="font-semibold text-ink">{refLabel(d, locale)}</p>
+          {v.secondary_departments.length > 0 && (
+            <p>{t("saved.also", { list: v.secondary_departments.map((c) => refLabel(dept(c), locale)).join(", ") })}</p>
+          )}
+          {app.sla_due_at && <p>{t("saved.due", { date: date(app.sla_due_at) })}</p>}
+        </Notice>
+        {sms && (
+          <section className="rounded-[var(--radius-panel)] border border-rule bg-surface p-4">
+            <h2 className="font-bold">
+              {t("saved.sms")}
+              {sms.to ? <span className="ml-2 font-normal text-ink-3">+91 {sms.to}</span> : null}
+            </h2>
+            <p className="text-[0.92rem] text-ink-3">
+              {sms.status === "logged" ? t("saved.sms.logged") : sms.status === "skipped" ? t("saved.sms.skipped") : sms.status === "failed" ? t("saved.sms.failed") : null}
+            </p>
+            <p className="mt-2 rounded-[var(--radius-control)] bg-paper p-3">{sms.body}</p>
+          </section>
+        )}
+        <section className="rounded-[var(--radius-panel)] border border-rule bg-surface p-4">
+          <p className="text-[1.1rem] font-bold">{v.applicant_name_original}</p>
+          {v.applicant_name_roman && <p className="text-ink-3">{v.applicant_name_roman}</p>}
+          <p className="mt-2">{v.summary_local}</p>
+          <p lang="en" className="mt-2 text-ink-2">
+            {v.summary_en}
+          </p>
+        </section>
+        <details className="rounded-[var(--radius-panel)] border border-rule bg-surface">
+          <summary className="flex min-h-14 cursor-pointer items-center px-4 font-semibold">{t("saved.history", { n: app.audit.length })}</summary>
+          <ol className="space-y-2 border-t border-rule p-4 text-[0.9rem]">
+            {app.audit.map((a, i) => (
+              <li key={i} className="border-b border-rule pb-2 last:border-0">
+                <span className="text-ink-3">{date(a.at, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span> — <b>{a.by}</b>{" "}
+                {a.action}
+                {a.field ? `: ${a.field} ${JSON.stringify(a.from)} → ${JSON.stringify(a.to)}` : ""}
+              </li>
+            ))}
+          </ol>
+        </details>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button href="/capture" icon="camera" size="lg">
+            {t("saved.next")}
+          </Button>
+          <Button href="/queue" variant="secondary" size="lg">
+            {t("saved.queue")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 }
 
 type TextKey = "applicant_name_original" | "applicant_name_roman" | "mobile" | "address" | "locality" | "taluka" | "district" | "letter_date" | "subject";
 
-function Text({
+function TextField({
+  id,
   label,
-  k,
   form,
   set,
-  conf,
+  attention,
   multiline,
   type = "text",
   inputMode,
+  error,
+  help,
 }: {
-  label: string;
-  k: TextKey;
+  id: TextKey;
+  label: MessageKey;
   form: VerifiedFields;
   set: <K extends keyof VerifiedFields>(k: K, v: VerifiedFields[K]) => void;
-  conf: (k: string) => Confidence | undefined;
+  attention?: Attention;
   multiline?: boolean;
   type?: string;
-  inputMode?: "numeric" | "text";
+  inputMode?: "tel" | "text";
+  error?: string;
+  help?: React.ReactNode;
 }) {
-  const c = conf(k);
-  const cls = `mt-1 block w-full rounded-xl border-2 border-line bg-white px-3 py-3 ${c === "low" ? "field-low" : ""}`;
-  const value = form[k] ?? "";
-  const onChange = (v: string) => set(k, v.trim() === "" ? null : v);
+  const value = form[id] ?? "";
+  const onChange = (v: string) => set(id, v.trim() === "" ? null : v);
+  const cls = inputClass(attention, !!error);
   return (
-    <label className="block">
-      <span className="flex items-center justify-between gap-2 font-semibold">
-        <span>{label}</span>
-        {c && <ConfBadge c={c} />}
-      </span>
+    <Field id={id} label={label} attention={attention} error={error} help={help}>
       {multiline ? (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={2} className={cls} />
+        <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={3} className={cls} />
       ) : (
-        <input value={value} type={type} inputMode={inputMode} onChange={(e) => onChange(e.target.value)} className={cls} />
+        <input id={id} value={value} type={type} inputMode={inputMode} onChange={(e) => onChange(e.target.value)} className={cls} />
       )}
-    </label>
+    </Field>
   );
 }
 
-function ConfBadge({ c }: { c: Confidence }) {
-  const s = { high: "text-forest-700", medium: "text-warn-700", low: "bg-warn-500 text-white px-1.5 rounded" }[c];
-  return <span className={`text-xs font-bold ${s}`}>{c === "low" ? "⚠ check · तपासा" : c}</span>;
-}
-
-function Select({ label, value, onChange, options, low }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][]; low?: boolean }) {
-  return (
-    <label className="block">
-      <span className="flex items-center justify-between font-semibold">
-        {label}
-        {low && <ConfBadge c="low" />}
-      </span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={`mt-1 block min-h-12 w-full rounded-xl border-2 border-line bg-white px-3 ${low ? "field-low" : ""}`}>
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>
-            {l}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function Area({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="block">
-      <span className="font-semibold">{label}</span>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={4} className="mt-1 block w-full rounded-xl border-2 border-line bg-white px-3 py-3" />
-    </label>
-  );
-}
-
-function Lines({ label, value, onChange }: { label: string; value: string[]; onChange: (v: string[]) => void }) {
+function Lines({ id, label, value, onChange }: { id: string; label: MessageKey; value: string[]; onChange: (v: string[]) => void }) {
   const [text, setText] = useState(value.join("\n"));
   return (
-    <label className="block">
-      <span className="font-semibold">{label}</span>
+    <Field id={id} label={label} hintKey="field.onePerLine">
       <textarea
+        id={id}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
           onChange(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean));
         }}
         rows={2}
-        className="mt-1 block w-full rounded-xl border-2 border-line bg-white px-3 py-3"
+        className={inputClass()}
       />
-    </label>
+    </Field>
   );
 }

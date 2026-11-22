@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { processPhoto, type ProcessedPage } from "@/lib/client/image";
 import { useSettings } from "@/lib/client/settings";
+import { useI18n } from "@/lib/i18n";
+import { Button } from "./ui/Button";
+import { Icon } from "./ui/Icon";
+import { Notice } from "./ui/Notice";
 
 interface Page extends ProcessedPage {
   url: string;
@@ -26,6 +30,7 @@ export function RescanPanel({
   onDone: () => void;
 }) {
   const [settings] = useSettings();
+  const { t } = useI18n();
   const [pages, setPages] = useState<Page[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
@@ -90,7 +95,7 @@ export function RescanPanel({
       else next.push(page);
       setPages(next);
     } catch (e) {
-      setError(`Could not read photo: ${(e as Error).message}`);
+      setError(t("capture.readError", { msg: (e as Error).message }));
     } finally {
       target.current = null;
       setBusy(false);
@@ -114,21 +119,21 @@ export function RescanPanel({
       return body;
     };
     try {
-      setProgress("Starting…");
+      setProgress(t("rescan.starting"));
       await call(`${base}/rescan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ page_count: pages.length, staff: settings.staff || "unknown" }),
       });
       for (let i = 0; i < pages.length; i++) {
-        setProgress(`Uploading page ${i + 1} of ${pages.length}…`);
+        setProgress(t("rescan.uploading", { a: i + 1, b: pages.length }));
         await call(`${base}/pages/${i}`, { method: "PUT", headers: { "Content-Type": pages[i].blob.type || "image/jpeg" }, body: pages[i].blob });
       }
-      setProgress("Starting AI reading…");
+      setProgress(t("rescan.reading"));
       await call(`${base}/read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       onDone();
     } catch (e) {
-      setError(`${(e as Error).message}. Nothing is lost — tap “Upload & read again” to retry.`);
+      setError(t("rescan.error", { msg: (e as Error).message }));
     } finally {
       setBusy(false);
       setProgress(null);
@@ -138,84 +143,89 @@ export function RescanPanel({
   const changed = !!pages && (pages.length !== initialUrls.length || pages.some((p) => p.changed));
 
   return (
-    <section className="mb-4 rounded-2xl border-2 border-forest-700 bg-white p-4 shadow-sm">
-      <h3 className="text-lg font-extrabold">
-        पुन्हा स्कॅन करा <span className="text-sm font-semibold text-muted">· Rescan pages</span>
-      </h3>
-      <p className="text-sm text-muted">Retake a blurred or cut-off page, add a missed page, or remove a wrong one. The token stays the same.</p>
+    <section className="mb-5 rounded-[var(--radius-panel)] border-2 border-indigo-700 bg-surface p-4" aria-labelledby="rescan-title">
+      <h2 id="rescan-title" className="text-[1.2rem] font-bold">
+        {t("rescan.title")}
+      </h2>
+      <p className="mt-1 text-ink-2">{t("rescan.body")}</p>
 
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFile(e.target.files)} />
 
-      {!pages && !error && <p className="mt-3 text-sm">Loading current pages…</p>}
+      {!pages && !error && <p className="mt-3 text-ink-3">{t("rescan.loading")}</p>}
 
       {pages && (
-        <ol className="mt-3 grid grid-cols-2 gap-3">
+        <ol className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
           {pages.map((p, i) => (
-            <li key={p.url} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
-              <img src={p.url} alt={`Page ${i + 1}`} className={`aspect-[3/4] w-full rounded-xl border-2 object-cover ${p.changed ? "border-forest-600" : "border-line"}`} />
-              <span className="absolute left-1.5 top-1.5 rounded-full bg-forest-700 px-2 text-sm font-bold text-white">{i + 1}</span>
-              {p.changed && <span className="absolute right-1.5 top-1.5 rounded-full bg-forest-600 px-1.5 text-[11px] font-bold text-white">new</span>}
-              <div className="mt-1 grid grid-cols-2 gap-1">
-                <button disabled={busy} onClick={() => shoot(i)} className="h-11 rounded-lg bg-forest-700 text-sm font-semibold text-white disabled:opacity-40">
-                  📷 Retake
-                </button>
-                <button
-                  disabled={busy || pages.length === 1}
-                  onClick={() => update((ps) => ps.filter((_, k) => k !== i))}
-                  className="h-11 rounded-lg border border-danger-600 text-sm font-semibold text-danger-600 disabled:opacity-30"
-                >
-                  Remove
-                </button>
+            <li key={p.url}>
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
+                <img
+                  src={p.url}
+                  alt={t("capture.page", { n: i + 1 })}
+                  className={`aspect-[3/4] w-full rounded-[var(--radius-control)] object-cover ${p.changed ? "ring-[3px] ring-indigo-600" : "ring-1 ring-rule"}`}
+                />
+                <span className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-2 text-[0.85rem] font-bold text-white">{i + 1}</span>
+                {p.changed && <span className="absolute right-2 top-2 rounded-full bg-indigo-700 px-2 py-0.5 text-[0.78rem] font-bold text-white">{t("rescan.new")}</span>}
               </div>
-              {p.cropped && p.original && (
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    update((ps) => {
-                      const o = ps[i].original!;
-                      ps[i] = { blob: o.blob, width: o.width, height: o.height, cropped: false, url: objectUrl(o.blob), changed: true };
-                      return ps;
-                    })
-                  }
-                  className="mt-1 h-9 w-full rounded-lg bg-yellow-100 text-xs font-semibold text-yellow-900 ring-1 ring-yellow-400"
-                >
-                  ✂ Use full photo
-                </button>
-              )}
+              <div className="mt-2 grid gap-1.5">
+                <Button size="md" icon="camera" disabled={busy} onClick={() => shoot(i)}>
+                  {t("rescan.retake")}
+                </Button>
+                {p.cropped && p.original && (
+                  <button
+                    disabled={busy}
+                    onClick={() =>
+                      update((ps) => {
+                        const o = ps[i].original!;
+                        ps[i] = { blob: o.blob, width: o.width, height: o.height, cropped: false, url: objectUrl(o.blob), changed: true };
+                        return ps;
+                      })
+                    }
+                    className="flex min-h-11 items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-marigold-50 text-[0.92rem] font-semibold text-marigold-700 ring-1 ring-inset ring-marigold-500"
+                  >
+                    <Icon name="crop" size={18} />
+                    {t("rescan.useFull")}
+                  </button>
+                )}
+                <Button variant="quiet" icon="trash" disabled={busy || pages.length === 1} onClick={() => update((ps) => ps.filter((_, k) => k !== i))} className="text-red-600">
+                  {t("rescan.remove")}
+                </Button>
+              </div>
             </li>
           ))}
           <li>
             <button
               disabled={busy}
               onClick={() => shoot(null)}
-              className="flex aspect-[3/4] w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-forest-600 text-forest-800 disabled:opacity-40"
+              className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-dashed border-indigo-600 text-indigo-800 disabled:opacity-40"
             >
-              <span className="text-3xl">＋</span>
-              <span className="text-sm font-semibold">Add page</span>
+              <Icon name="plus" size={32} />
+              <span className="font-semibold">{t("rescan.add")}</span>
             </button>
           </li>
         </ol>
       )}
 
-      {progress && <p className="mt-3 rounded-lg bg-forest-50 p-2 text-sm font-semibold">{progress}</p>}
-      {error && <p className="mt-3 rounded-lg bg-danger-50 p-2 text-sm text-danger-600">{error}</p>}
+      {progress && (
+        <Notice tone="info" role="status" className="mt-4">
+          {progress}
+        </Notice>
+      )}
+      {error && (
+        <Notice tone="error" role="alert" className="mt-4">
+          {error}
+        </Notice>
+      )}
 
-      <div className="mt-4 flex gap-2">
-        <button disabled={busy} onClick={onCancel} className="min-h-14 rounded-2xl border-2 border-line px-4 font-semibold disabled:opacity-40">
-          रद्द
-          <span className="block text-xs font-normal">Cancel</span>
-        </button>
-        <button
-          disabled={busy || !changed}
-          onClick={() => void submit()}
-          className="min-h-14 flex-1 rounded-2xl bg-forest-700 px-3 font-bold leading-tight text-white disabled:bg-gray-400"
-        >
-          अपलोड व पुन्हा वाचा
-          <span className="block text-xs font-semibold opacity-90">Upload & read again</span>
-        </button>
+      <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
+        <Button variant="secondary" disabled={busy} onClick={onCancel}>
+          {t("rescan.cancel")}
+        </Button>
+        <Button size="lg" icon="upload" className="flex-1" disabled={busy || !changed} onClick={() => void submit()}>
+          {t("rescan.submit")}
+        </Button>
       </div>
-      <p className="mt-2 text-xs text-muted">The current AI reading is replaced. Every rescan is recorded in the audit log.</p>
+      <p className="mt-2 text-[0.88rem] text-ink-3">{t("rescan.note")}</p>
     </section>
   );
 }

@@ -18,7 +18,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/pwa-icon/[size]">) 
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#17632f",
+          background: "#2f3b9c",
           borderRadius: maskable ? 0 : size * 0.22,
         }}
       >
@@ -32,12 +32,12 @@ export async function GET(_req: Request, ctx: RouteContext<"/pwa-icon/[size]">) 
             justifyContent: "center",
             background: "#ffffff",
             borderRadius: size * 0.08,
-            color: "#17632f",
+            color: "#2f3b9c",
           }}
         >
           <div style={{ fontSize: size * 0.3, fontWeight: 800, lineHeight: 1 }}>JD</div>
-          <div style={{ width: "50%", height: size * 0.035, background: "#17632f", marginTop: size * 0.05, borderRadius: 99 }} />
-          <div style={{ width: "36%", height: size * 0.035, background: "#7fb58e", marginTop: size * 0.03, borderRadius: 99 }} />
+          <div style={{ width: "50%", height: size * 0.035, background: "#2f3b9c", marginTop: size * 0.05, borderRadius: 99 }} />
+          <div style={{ width: "36%", height: size * 0.035, background: "#9aa3e0", marginTop: size * 0.03, borderRadius: 99 }} />
         </div>
       </div>
     ),

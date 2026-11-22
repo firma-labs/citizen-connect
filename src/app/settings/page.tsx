@@ -1,19 +1,24 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BigButton, Header, Page } from "@/components/Header";
+import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
+import { Button } from "@/components/ui/Button";
+import { Field, SectionTitle, inputClass } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
+import { Notice } from "@/components/ui/Notice";
 import { saveSettings, useSettings } from "@/lib/client/settings";
-import { VENUES } from "@/lib/reference";
+import { LOCALES, useI18n, type MessageKey } from "@/lib/i18n";
+import { VENUES, refLabel } from "@/lib/reference";
 
 export default function SettingsPage() {
   const [s, hydrated] = useSettings();
-  const router = useRouter();
+  const { t, hint, locale, setLocale } = useI18n();
   const [staff, setStaff] = useState("");
-  const [health, setHealth] = useState<Record<string, string> | null>(null);
+  const [savedName, setSavedName] = useState(false);
+  const [health, setHealth] = useState<Record<string, string> | null | undefined>(undefined);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed the input once settings load
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed the input once settings load from storage
     if (hydrated) setStaff(s.staff);
   }, [hydrated, s.staff]);
 
@@ -26,90 +31,157 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Header title="सेटिंग्ज · Settings" back="/" />
-      <Page>
+      <AppBar />
+      <Screen>
+        <h1 className="mb-6 text-[1.7rem] font-extrabold">{t("settings.title")}</h1>
+
         <form
-          className="space-y-5"
+          className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             saveSettings({ staff: staff.trim() });
-            router.push("/");
+            setSavedName(true);
           }}
         >
-          <label className="block">
-            <span className="font-bold">कर्मचारी नाव · Staff name</span>
-            <input
-              value={staff}
-              onChange={(e) => setStaff(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-xl border-2 border-line bg-white px-4 py-3"
-              placeholder="e.g. R. Jadhav"
-            />
-            <span className="text-sm text-muted">Recorded against every token and every edit (audit log).</span>
-          </label>
-
-          <fieldset>
-            <legend className="font-bold">दरबार ठिकाण · Darbar venue</legend>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {VENUES.map((v) => (
-                <button
-                  type="button"
-                  key={v.code}
-                  onClick={() => saveSettings({ venue: v.code })}
-                  className={`rounded-xl border-2 px-2 py-3 font-semibold ${s.venue === v.code ? "border-forest-700 bg-forest-700 text-white" : "border-line bg-white"}`}
-                >
-                  <div>{v.mr}</div>
-                  <div className="text-xs opacity-80">{v.name}</div>
-                </button>
-              ))}
+          <Field id="staff" label="settings.staff" hintKey="settings.staff.hint">
+            <div className="flex gap-2">
+              <input
+                id="staff"
+                value={staff}
+                onChange={(e) => {
+                  setStaff(e.target.value);
+                  setSavedName(false);
+                }}
+                required
+                autoComplete="name"
+                className={inputClass()}
+              />
+              <Button type="submit" variant={savedName ? "secondary" : "primary"} icon={savedName ? "check" : undefined} className="shrink-0 whitespace-nowrap">
+                {savedName ? t("settings.saved") : t("settings.save")}
+              </Button>
             </div>
-          </fieldset>
-
-          <Toggle
-            checked={s.autoCrop}
-            onChange={(v) => saveSettings({ autoCrop: v })}
-            mr="कडा आपोआप कापा"
-            en="Auto-crop to paper edges"
-          />
-          <Toggle
-            checked={s.liveCamera}
-            onChange={(v) => saveSettings({ liveCamera: v })}
-            mr="थेट कॅमेरा (मार्गदर्शक रेषा)"
-            en="Live camera view with edge guides (optional)"
-          />
-
-          <BigButton type="submit" mr="जतन करा" en="Save" />
+          </Field>
         </form>
 
-        <section className="mt-8 rounded-2xl bg-white p-4 text-sm shadow-sm">
-          <div className="mb-2 font-bold">System check · प्रणाली तपासणी</div>
-          {health ? (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <dt className="text-muted">Store</dt><dd>{health.store}</dd>
-              <dt className="text-muted">AI reader</dt><dd>{health.reader}</dd>
-              <dt className="text-muted">AI reasoner</dt><dd>{health.reasoner}</dd>
-              <dt className="text-muted">SMS</dt><dd>{health.sms}</dd>
-            </dl>
+        <Choice
+          className="mt-8"
+          title="settings.venue"
+          value={s.venue}
+          onChange={(v) => saveSettings({ venue: v })}
+          options={VENUES.map((v) => ({ value: v.code, label: refLabel(v, locale) }))}
+        />
+
+        <Choice
+          className="mt-8"
+          title="settings.language"
+          value={locale}
+          onChange={(v) => setLocale(v as typeof locale)}
+          options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.tag }))}
+        />
+
+        <div className="mt-8 divide-y divide-rule rounded-[var(--radius-panel)] border border-rule bg-surface">
+          {locale !== "en" && <Toggle label="settings.hints" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />}
+          <Toggle label="settings.autoCrop" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
+          <Toggle label="settings.live" help="settings.live.hint" checked={s.liveCamera} onChange={(v) => saveSettings({ liveCamera: v })} />
+        </div>
+
+        <section className="mt-10">
+          <SectionTitle k="settings.system" />
+          {health === null ? (
+            <Notice tone="attention" className="mt-3">
+              {t("settings.offline")}
+            </Notice>
           ) : (
-            <p className="text-muted">Server not reachable (offline?) — capture still works and will sync later.</p>
+            <dl className="mt-3 divide-y divide-rule rounded-[var(--radius-panel)] border border-rule bg-surface">
+              {(
+                [
+                  ["settings.store", health?.store],
+                  ["settings.reader", health?.reader],
+                  ["settings.reasoner", health?.reasoner],
+                  ["settings.sms", health?.sms],
+                ] as [MessageKey, string | undefined][]
+              ).map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4 px-4 py-3">
+                  <dt className="text-ink-2">
+                    {t(k)}
+                    {hint(k) && <span className="block text-[0.8rem] text-ink-3">{hint(k)}</span>}
+                  </dt>
+                  <dd className="break-all text-right font-semibold">{v ?? "…"}</dd>
+                </div>
+              ))}
+            </dl>
           )}
-          <p className="mt-3 text-muted">
-            Pilot build: mock or redacted letters only. Do not capture real citizen applications on this server.
+          <p className="mt-3 flex items-start gap-2 text-[0.9rem] text-ink-3">
+            <Icon name="info" size={18} className="mt-0.5" />
+            {t("settings.pilot")}
           </p>
         </section>
-      </Page>
+      </Screen>
+      <BottomNav />
     </>
   );
 }
 
-function Toggle({ checked, onChange, mr, en }: { checked: boolean; onChange: (v: boolean) => void; mr: string; en: string }) {
+function Choice({
+  title,
+  value,
+  onChange,
+  options,
+  className = "",
+}: {
+  title: MessageKey;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string; lang?: string }[];
+  className?: string;
+}) {
+  const { t, hint } = useI18n();
   return (
-    <label className="flex min-h-14 items-center justify-between gap-4 rounded-xl border-2 border-line bg-white px-4 py-3">
-      <span>
-        <span className="block font-bold">{mr}</span>
-        <span className="block text-sm text-muted">{en}</span>
-      </span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-7 w-7 accent-forest-700" />
-    </label>
+    <fieldset className={className}>
+      <legend className="font-semibold">
+        {t(title)}
+        {hint(title) && <span className="block text-[0.82rem] font-normal text-ink-3">{hint(title)}</span>}
+      </legend>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {options.map((o) => {
+          const on = o.value === value;
+          return (
+            <label
+              key={o.value}
+              lang={o.lang}
+              className={`flex min-h-14 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-control)] px-2 text-center font-semibold leading-tight has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-focus ${on ? "bg-indigo-700 text-white" : "bg-surface text-ink ring-1 ring-inset ring-rule-strong"}`}
+            >
+              <input type="radio" name={title} value={o.value} checked={on} onChange={() => onChange(o.value)} className="sr-only" />
+              {on && <Icon name="check" size={18} />}
+              {o.label}
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function Toggle({ label, help, checked, onChange }: { label: MessageKey; help: MessageKey; checked: boolean; onChange: (v: boolean) => void }) {
+  const { t, hint } = useI18n();
+  const id = `toggle-${label}`;
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-4">
+      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
+        <span className="block font-semibold">{t(label)}</span>
+        {hint(label) && <span className="block text-[0.8rem] text-ink-3">{hint(label)}</span>}
+        <span className="mt-0.5 block text-[0.9rem] text-ink-3">{t(help)}</span>
+      </label>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${checked ? "bg-indigo-700" : "bg-rule-strong"}`}
+      >
+        <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-[left] ${checked ? "left-7" : "left-1"}`} />
+      </button>
+    </div>
   );
 }

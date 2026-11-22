@@ -3,9 +3,14 @@
 import { useEffect, useState } from "react";
 import { startSync } from "@/lib/client/sync";
 import { detectEnv, type BrowserEnv } from "@/lib/client/environment";
+import { useHtmlLang, useI18n } from "@/lib/i18n";
+import { Button } from "./ui/Button";
+import { Notice } from "./ui/Notice";
 
-/** Registers the service worker, starts background sync, and warns about in-app browsers. */
+/** Registers the service worker, starts background upload, keeps <html lang> current, warns about in-app browsers. */
 export function AppRuntime() {
+  useHtmlLang();
+  const { t } = useI18n();
   const [env, setEnv] = useState<BrowserEnv | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -24,34 +29,28 @@ export function AppRuntime() {
   if (!env || dismissed) return null;
   if (env.inAppBrowser) {
     return (
-      <div className="bg-warn-50 border-b-2 border-warn-500 px-4 py-3 text-[15px]">
-        <p className="font-bold">Chrome मध्ये उघडा · Open in Chrome</p>
-        <p className="mt-1">
-          You are inside {env.inAppBrowser}. The camera and offline queue work reliably only in Chrome.
-        </p>
-        <div className="mt-2 flex gap-2">
-          {env.chromeIntentUrl && (
-            <a href={env.chromeIntentUrl} className="rounded-lg bg-forest-700 px-4 py-2 font-semibold text-white">
-              Open in Chrome
-            </a>
-          )}
-          <button onClick={() => setDismissed(true)} className="rounded-lg border border-line px-4 py-2">
-            Continue anyway
-          </button>
-        </div>
+      <div className="border-b border-rule bg-surface p-3">
+        <Notice tone="attention" title={t("env.inApp.title")}>
+          <p>{t("env.inApp.body", { app: env.inAppBrowser })}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {env.chromeIntentUrl && <Button href={env.chromeIntentUrl}>{t("env.openChrome")}</Button>}
+            <Button variant="secondary" onClick={() => setDismissed(true)}>
+              {t("env.continue")}
+            </Button>
+          </div>
+        </Notice>
       </div>
     );
   }
   if (env.iosStandalone) {
     return (
-      <div className="bg-warn-50 border-b-2 border-warn-500 px-4 py-3 text-[15px]">
-        <p>
-          On iPhone, use this app in <b>Safari</b>, not from the home-screen icon — the camera can stop when you switch
-          screens.
-        </p>
-        <button onClick={() => setDismissed(true)} className="mt-2 rounded-lg border border-line px-4 py-2">
-          OK
-        </button>
+      <div className="border-b border-rule bg-surface p-3">
+        <Notice tone="attention">
+          <p>{t("env.ios")}</p>
+          <Button variant="secondary" className="mt-3" onClick={() => setDismissed(true)}>
+            {t("env.ok")}
+          </Button>
+        </Notice>
       </div>
     );
   }

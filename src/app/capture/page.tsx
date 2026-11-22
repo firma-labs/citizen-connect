@@ -1,14 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BigButton, Header, Page } from "@/components/Header";
 import { LiveCamera } from "@/components/LiveCamera";
+import { AppBar, Screen } from "@/components/ui/AppBar";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+import { Notice } from "@/components/ui/Notice";
 import { TokenCard } from "@/components/TokenCard";
 import { deleteApp, getDraft, getPages, patchApp, putApp, setPages, type LocalPage } from "@/lib/client/db";
 import { processPhoto, type ProcessedPage } from "@/lib/client/image";
 import { useSettings } from "@/lib/client/settings";
 import { syncNow } from "@/lib/client/sync";
+import { useI18n } from "@/lib/i18n";
 import { generateToken } from "@/lib/token";
 
 type Thumb = LocalPage & { url: string };
@@ -18,9 +21,10 @@ const pageInput = ({ blob, width, height, cropped, original }: LocalPage): PageI
 
 export default function CapturePage() {
   const [settings, hydrated] = useSettings();
+  const { t } = useI18n();
   const [token, setToken] = useState<string | null>(null);
   const [pages, setPagesState] = useState<Thumb[]>([]);
-  const [issued, setIssued] = useState<{ token: string; pages: number } | null>(null);
+  const [issued, setIssued] = useState<{ token: string; pages: number; at: string } | null>(null);
   const [busy, setBusy] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Thumb | null>(null);
@@ -115,7 +119,7 @@ export default function CapturePage() {
       try {
         out.push(await processPhoto(f, { autoCrop: settings.autoCrop }));
       } catch (e) {
-        setError(`Could not read photo: ${(e as Error).message}`);
+        setError(t("capture.readError", { msg: (e as Error).message }));
       } finally {
         setBusy((n) => n - 1);
       }
@@ -150,20 +154,21 @@ export default function CapturePage() {
 
   async function issueToken() {
     if (!token || pages.length === 0) return;
+    const at = new Date().toISOString();
     await patchApp(token, {
       state: "queued",
       page_count: pages.length,
-      captured_at: new Date().toISOString(),
+      captured_at: at,
       captured_by: settings.staff || null,
     });
-    setIssued({ token, pages: pages.length });
+    setIssued({ token, pages: pages.length, at });
     setToken(null);
     navigator.vibrate?.([60, 40, 60]);
     void syncNow();
   }
 
   async function discard() {
-    if (!token || !confirm("हा अर्ज रद्द करायचा? Discard these photos?")) return;
+    if (!token || !confirm(t("capture.discardConfirm"))) return;
     await deleteApp(token);
     setPagesState([]);
     setToken(null);
@@ -173,17 +178,19 @@ export default function CapturePage() {
   if (issued) {
     return (
       <>
-        <Header title="टोकन · Token issued" back="/" />
-        <Page>
-          <TokenCard token={issued.token} pages={issued.pages} />
-          <p className="mt-3 rounded-xl bg-forest-50 p-3 text-center text-sm">
-            Saved on this phone. It uploads and the AI reads it in the background — verify it from the queue.
-          </p>
-          <div className="mt-4 space-y-3">
-            <BigButton mr="पुढील नागरिक" en="Next citizen" onClick={() => setIssued(null)} />
-            <BigButton variant="secondary" mr="अर्ज यादी" en="Go to queue" href="/queue" />
+        <AppBar title="token.title" back="/" />
+        <Screen>
+          <TokenCard token={issued.token} pages={issued.pages} issuedAt={issued.at} />
+          <p className="mx-auto mt-4 max-w-md text-center text-[0.92rem] text-ink-3">{t("token.saved")}</p>
+          <div className="mx-auto mt-5 grid max-w-md gap-3">
+            <Button size="lg" block icon="camera" onClick={() => setIssued(null)}>
+              {t("token.next")}
+            </Button>
+            <Button variant="secondary" block href="/queue">
+              {t("token.queue")}
+            </Button>
           </div>
-        </Page>
+        </Screen>
       </>
     );
   }
@@ -192,32 +199,18 @@ export default function CapturePage() {
 
   return (
     <>
-      <Header title="स्कॅन · Scan pages" back="/" />
-      <Page>
+      <AppBar title="capture.title" back="/" />
+      <Screen>
         {/* Default path (PRD §6): the phone's own camera app — full resolution, no permission prompt. */}
-        <input
-          ref={cameraInput}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => void onFiles(e.target.files)}
-        />
-        <input
-          ref={galleryInput}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => void onFiles(e.target.files)}
-        />
+        <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFiles(e.target.files)} />
+        <input ref={galleryInput} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void onFiles(e.target.files)} />
 
-        <div className="mb-3 flex items-baseline justify-between">
+        <div className="mb-4 flex items-end justify-between gap-3">
           <div>
-            <div className="text-sm text-muted">Pages · पाने</div>
-            <div className="text-3xl font-extrabold">{pages.length}</div>
+            <p className="text-ink-3">{t("capture.count")}</p>
+            <p className="text-[2.4rem] font-extrabold leading-none">{pages.length}</p>
           </div>
-          {token && <div className="token-text text-sm text-muted">{token}</div>}
+          {token && <p className="token pb-1 text-[0.95rem] text-ink-3">{token}</p>}
         </div>
 
         {live ? (
@@ -233,96 +226,137 @@ export default function CapturePage() {
           <button
             onClick={() => cameraInput.current?.click()}
             disabled={!token}
-            className="flex min-h-40 w-full flex-col items-center justify-center rounded-3xl border-4 border-dashed border-forest-600 bg-white p-6 text-forest-800 active:bg-forest-50"
+            className="group flex min-h-48 w-full flex-col items-center justify-center gap-3 rounded-[var(--radius-panel)] border-2 border-dashed border-indigo-600 bg-surface p-6 text-indigo-800 transition-colors active:bg-indigo-50 disabled:opacity-50"
           >
-            <span className="text-5xl" aria-hidden>📷</span>
-            <span className="mt-2 text-xl font-extrabold">
-              {pages.length ? `पान ${pages.length + 1} चा फोटो घ्या` : "पहिल्या पानाचा फोटो घ्या"}
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-indigo-700 text-white">
+              <Icon name="camera" size={32} />
             </span>
-            <span className="text-sm font-semibold">
-              {pages.length ? `Photograph page ${pages.length + 1}` : "Photograph the first page"}
+            <span className="text-[1.3rem] font-bold leading-snug">
+              {pages.length ? t("capture.next", { n: pages.length + 1 }) : t("capture.first")}
             </span>
           </button>
         )}
+        <p className="mt-2 text-[0.92rem] text-ink-3">{t("capture.tip")}</p>
 
-        <div className="mt-2 flex justify-between text-sm">
-          <button onClick={() => galleryInput.current?.click()} className="px-1 py-2 text-forest-700 underline underline-offset-4">
-            गॅलरीतून निवडा · From gallery
-          </button>
+        <div className="mt-2 flex flex-wrap gap-x-2">
+          <Button variant="quiet" icon="image" onClick={() => galleryInput.current?.click()}>
+            {t("capture.gallery")}
+          </Button>
           {settings.liveCamera && (
-            <button onClick={() => setUseCameraApp((v) => !v)} className="px-1 py-2 text-forest-700 underline underline-offset-4">
-              {useCameraApp ? "Live view" : "Camera app"}
-            </button>
+            <Button variant="quiet" icon="camera" onClick={() => setUseCameraApp((v) => !v)}>
+              {useCameraApp ? t("capture.liveView") : t("capture.cameraApp")}
+            </Button>
           )}
         </div>
 
-        {busy > 0 && <p className="mt-2 rounded-xl bg-forest-50 p-3 text-center font-semibold">Processing {busy} photo(s)…</p>}
-        {error && <p className="mt-2 rounded-xl bg-danger-50 p-3 text-danger-600">{error}</p>}
+        {busy > 0 && (
+          <Notice tone="info" role="status" className="mt-3">
+            {t("capture.processing", { n: busy })}
+          </Notice>
+        )}
+        {error && (
+          <Notice tone="error" role="alert" className="mt-3">
+            {error}
+          </Notice>
+        )}
 
         {pages.length > 0 && (
-          <ol className="mt-4 grid grid-cols-3 gap-3">
+          <ol className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
             {pages.map((p, i) => (
-              <li key={p.key} className="relative">
-                <button onClick={() => setPreview(p)} className="block w-full overflow-hidden rounded-xl border-2 border-line bg-white">
+              <li key={p.key}>
+                <button
+                  onClick={() => setPreview(p)}
+                  className="relative block w-full overflow-hidden rounded-[var(--radius-control)] border border-rule bg-surface"
+                  aria-label={t("capture.page", { n: i + 1 })}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
-                  <img src={p.url} alt={`Page ${i + 1}`} className="aspect-[3/4] w-full object-cover" />
+                  <img src={p.url} alt="" className="aspect-[3/4] w-full object-cover" />
+                  <span className="absolute left-2 top-2 grid h-8 min-w-8 place-items-center rounded-full bg-ink px-2 text-[0.9rem] font-bold text-white">
+                    {i + 1}
+                  </span>
+                  {p.cropped && (
+                    <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-marigold-50/95 py-1 text-[0.82rem] font-semibold text-marigold-700">
+                      <Icon name="crop" size={15} />
+                      {t("capture.cropped")}
+                    </span>
+                  )}
                 </button>
-                <span className="absolute left-1.5 top-1.5 rounded-full bg-forest-700 px-2 text-sm font-bold text-white">{i + 1}</span>
-                {p.cropped && (
-                  <span className="absolute right-1.5 top-1.5 rounded-full bg-yellow-400 px-1.5 text-[11px] font-bold text-yellow-950">✂ crop</span>
-                )}
-                <div className="mt-1 flex justify-between">
-                  <button onClick={() => void move(i, -1)} disabled={i === 0} className="h-10 w-10 rounded-lg border border-line bg-white disabled:opacity-30" aria-label="Move earlier">‹</button>
-                  <button onClick={() => void move(i, 1)} disabled={i === pages.length - 1} className="h-10 w-10 rounded-lg border border-line bg-white disabled:opacity-30" aria-label="Move later">›</button>
+                <div className="mt-1.5 flex justify-between">
+                  <button
+                    onClick={() => void move(i, -1)}
+                    disabled={i === 0}
+                    aria-label={t("capture.earlier")}
+                    className="grid h-12 w-12 place-items-center rounded-full text-ink-2 hover:bg-surface disabled:opacity-25"
+                  >
+                    <Icon name="back" />
+                  </button>
+                  <button
+                    onClick={() => void move(i, 1)}
+                    disabled={i === pages.length - 1}
+                    aria-label={t("capture.later")}
+                    className="grid h-12 w-12 place-items-center rounded-full text-ink-2 hover:bg-surface disabled:opacity-25"
+                  >
+                    <Icon name="next" />
+                  </button>
                 </div>
               </li>
             ))}
           </ol>
         )}
+      </Screen>
 
-        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white/95 p-3 backdrop-blur" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-          <div className="mx-auto flex max-w-2xl gap-2">
-            {pages.length > 0 && (
-              <button onClick={() => void discard()} className="rounded-2xl border-2 border-danger-600 px-4 font-semibold text-danger-600">
-                रद्द
-                <span className="block text-xs">Discard</span>
-              </button>
-            )}
-            <div className="flex-1">
-              <BigButton
-                mr={`टोकन द्या${pages.length ? ` (${pages.length} पाने)` : ""}`}
-                en="Done — issue token"
-                onClick={() => void issueToken()}
-                disabled={pages.length === 0 || busy > 0}
-              />
-            </div>
-          </div>
+      <div
+        className="fixed inset-x-0 bottom-0 z-10 border-t border-rule bg-surface/95 px-4 pt-3 backdrop-blur"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <div className="mx-auto flex max-w-2xl gap-3">
+          {pages.length > 0 && (
+            <Button variant="danger" size="lg" icon="trash" onClick={() => void discard()} aria-label={t("capture.discard")}>
+              <span className="sr-only sm:not-sr-only">{t("capture.discard")}</span>
+            </Button>
+          )}
+          <Button size="lg" block onClick={() => void issueToken()} disabled={pages.length === 0 || busy > 0}>
+            {t("capture.issue")}
+          </Button>
         </div>
+      </div>
 
-        {preview && (
-          <div className="fixed inset-0 z-30 flex flex-col bg-black/95" role="dialog">
-            <div className="flex items-center justify-between p-3 text-white">
-              <span className="font-bold">Page {preview.idx + 1}{preview.cropped ? " · auto-cropped" : ""}</span>
-              <button onClick={() => setPreview(null)} className="h-11 rounded-lg bg-white/15 px-4">Close</button>
-            </div>
-            <div className="flex-1 overflow-auto">
-              {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
-              <img src={preview.url} alt="" className="mx-auto max-w-none" style={{ width: "100%" }} />
-            </div>
+      {preview && (
+        <div className="fixed inset-0 z-30 flex flex-col bg-ink" role="dialog" aria-modal="true" aria-label={t("capture.page", { n: preview.idx + 1 })}>
+          <div className="flex items-center justify-between gap-2 p-3 text-white" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+            <span className="font-semibold">
+              {t("capture.page", { n: preview.idx + 1 })}
+              {preview.cropped ? ` · ${t("capture.cropped")}` : ""}
+            </span>
+            <button onClick={() => setPreview(null)} className="flex h-12 items-center gap-2 rounded-full bg-white/15 px-4 font-semibold">
+              <Icon name="close" size={20} />
+              {t("capture.close")}
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto">
+            {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
+            <img src={preview.url} alt="" className="mx-auto w-full max-w-3xl" />
+          </div>
+          <div className="space-y-2 bg-ink p-3" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
             {preview.cropped && preview.original && (
-              <div className="px-3 pt-3">
+              <div>
                 <button
                   onClick={() => void restoreFullPhoto(preview.idx)}
-                  className="w-full rounded-xl border-2 border-yellow-400 bg-yellow-100 py-3 font-semibold text-yellow-900"
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-marigold-50 font-semibold text-marigold-700"
                 >
-                  पूर्ण फोटो वापरा · Use full photo (undo crop)
+                  <Icon name="crop" size={20} />
+                  {t("capture.useFull")}
                 </button>
-                <p className="mt-1 text-center text-xs text-white/70">Check the edges — the signature and mobile number must be visible.</p>
+                <p className="mt-1 text-center text-[0.85rem] text-white/75">{t("capture.useFullHint")}</p>
               </div>
             )}
-            <div className="flex gap-2 p-3">
-              <button onClick={() => void remove(preview.idx)} className="flex-1 rounded-xl bg-danger-600 py-3 font-semibold text-white">
-                हे पान काढा · Delete page
+            <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
+              <button
+                onClick={() => void remove(preview.idx)}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white/10 font-semibold text-white ring-1 ring-inset ring-white/30"
+              >
+                <Icon name="trash" size={20} />
+                {t("capture.delete")}
               </button>
               <button
                 onClick={() => {
@@ -330,20 +364,15 @@ export default function CapturePage() {
                   setPreview(null);
                   cameraInput.current?.click();
                 }}
-                className="flex-1 rounded-xl bg-white py-3 font-semibold"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white font-semibold text-ink"
               >
-                पुन्हा घ्या · Retake
+                <Icon name="camera" size={20} />
+                {t("capture.retake")}
               </button>
             </div>
           </div>
-        )}
-
-        {!hydrated || token ? null : (
-          <p className="mt-4 text-center text-muted">
-            Loading… <Link href="/" className="underline">Home</Link>
-          </p>
-        )}
-      </Page>
+        </div>
+      )}
     </>
   );
 }

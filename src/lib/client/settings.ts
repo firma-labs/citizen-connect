@@ -8,6 +8,9 @@ export interface Settings {
   venue: string;
   autoCrop: boolean;
   liveCamera: boolean;
+  locale: "mr" | "en" | "hi";
+  /** Show the English label under each field when the UI is in Marathi or Hindi. */
+  hints: boolean;
 }
 
 const KEY = "cc-settings";
@@ -16,6 +19,8 @@ const DEFAULTS: Settings = {
   venue: "TH",
   autoCrop: true,
   liveCamera: process.env.NEXT_PUBLIC_LIVE_CAMERA === "1",
+  locale: "mr",
+  hints: true,
 };
 
 let cache: Settings | null = null;
