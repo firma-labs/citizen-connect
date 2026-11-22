@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { BigButton, Header, Page } from "@/components/Header";
+import { RescanPanel } from "@/components/RescanPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useSettings } from "@/lib/client/settings";
 import { fetchApplication, requestRead, syncNow } from "@/lib/client/sync";
@@ -79,6 +80,9 @@ function Verify() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number | null>(null);
+  const [rescanning, setRescanning] = useState(false);
+  const [pollKey, setPollKey] = useState(0);
+  const [seededFrom, setSeededFrom] = useState<string | null>(null); // read_at of the AI result in the form
 
   const load = useCallback(async () => {
     try {
@@ -106,12 +110,18 @@ function Verify() {
       stop = true;
       clearTimeout(t);
     };
-  }, [token, load]);
+  }, [token, load, pollKey]);
 
+  // Fill the form from each new AI result — the first one, and again after a rescan or retry.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed the editable form once the AI result arrives
-    if (app?.status === "read" && !form) setForm(fromExtraction(app));
-  }, [app, form]);
+    const readAt = app?.extraction?.read_at ?? null;
+    if (app?.status === "read" && readAt && readAt !== seededFrom) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- seed the editable form from a new AI result
+      setForm(fromExtraction(app));
+      setSeededFrom(readAt);
+      setConfirmed(false);
+    }
+  }, [app, seededFrom]);
 
   const conf = useMemo(() => {
     const c = app?.extraction?.reader.confidence;
@@ -161,7 +171,11 @@ function Verify() {
   }
 
   const status = app?.status;
-  const pageUrls = app ? Array.from({ length: app.page_count }, (_, i) => `/api/applications/${encodeURIComponent(token)}/pages/${i}`) : [];
+  // ?v= busts the browser's image cache after a rescan replaces the pages.
+  const pageUrls = app
+    ? Array.from({ length: app.page_count }, (_, i) => `/api/applications/${encodeURIComponent(token)}/pages/${i}?v=${app.pages_version ?? 0}`)
+    : [];
+  const canRescan = status === "read" || status === "read_failed" || status === "captured";
 
   return (
     <>
@@ -195,7 +209,32 @@ function Verify() {
           </div>
         )}
 
-        {(status === "captured" || status === "reading") && (
+        {canRescan && !rescanning && app && app.pages_received.length === app.page_count && (
+          <button
+            onClick={() => setRescanning(true)}
+            className="mb-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-forest-700 bg-white font-semibold text-forest-800"
+          >
+            📷 पुन्हा स्कॅन करा · Rescan pages
+          </button>
+        )}
+
+        {rescanning && (
+          <RescanPanel
+            token={token}
+            pageUrls={pageUrls}
+            onCancel={() => setRescanning(false)}
+            onDone={() => {
+              setRescanning(false);
+              setForm(null);
+              setManual(false);
+              setConfirmed(false);
+              setPollKey((k) => k + 1);
+              window.scrollTo({ top: 0 });
+            }}
+          />
+        )}
+
+        {!rescanning && (status === "captured" || status === "reading") && (
           <div className="rounded-2xl bg-blue-50 p-5 text-center">
             <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" />
             <p className="font-bold">AI वाचन सुरू आहे · AI is reading the pages</p>
@@ -207,7 +246,7 @@ function Verify() {
           </div>
         )}
 
-        {status === "read_failed" && !form && (
+        {!rescanning && status === "read_failed" && !form && (
           <div className="space-y-3 rounded-2xl border-2 border-danger-600 bg-danger-50 p-4">
             <p className="font-bold">AI could not read this application</p>
             <p className="text-sm">{app?.read_error}</p>
@@ -230,7 +269,7 @@ function Verify() {
 
         {(status === "routed" || status === "in_progress" || status === "closed") && app && <Saved app={app} />}
 
-        {form && (status === "read" || (status === "read_failed" && manual)) && (
+        {!rescanning && form && (status === "read" || (status === "read_failed" && manual)) && (
           <form
             onSubmit={(e) => {
               e.preventDefault();

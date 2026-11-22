@@ -35,9 +35,11 @@ export async function claimRead(token: string, force = false): Promise<boolean> 
 /** Run Reader then Reasoner. Caller must have claimed the read first. */
 export async function runRead(token: string): Promise<void> {
   const store = getStore();
+  let version = -1;
   try {
     const app = await store.get(token);
     if (!app) throw new Error("application not found");
+    version = app.pages_version ?? 0;
     const pages: PageImage[] = [];
     for (let i = 0; i < app.page_count; i++) {
       const blob = await store.getPage(token, i);
@@ -68,6 +70,7 @@ export async function runRead(token: string): Promise<void> {
     const t2 = Date.now();
 
     await store.update(token, (a) => {
+      if ((a.pages_version ?? 0) !== version) return null; // pages were rescanned meanwhile — discard this read
       a.status = "read";
       a.read_error = null;
       a.extraction = {
@@ -84,12 +87,39 @@ export async function runRead(token: string): Promise<void> {
     const message = e instanceof AIError ? e.message : `AI reading failed: ${(e as Error).message}`;
     console.error(`[read] ${token}:`, e);
     await store.update(token, (a) => {
+      if (a.status !== "reading" || (version >= 0 && (a.pages_version ?? 0) !== version)) return null; // rescanned meanwhile
       a.status = "read_failed";
       a.read_error = message;
       a.audit.push({ at: new Date().toISOString(), by: "system", action: "ai_read_failed", to: message });
       return a;
     });
   }
+}
+
+export class VerifyError extends Error {}
+
+/**
+ * Staff replace the page photos before verification (blurred, cropped or missing
+ * page). Same token; pages are re-uploaded and read again. Not allowed once the
+ * application has been verified and routed.
+ */
+export async function startRescan(token: string, pageCount: number, by: string) {
+  return getStore().update(token, (a) => {
+    if (a.status === "routed" || a.status === "in_progress" || a.status === "closed") {
+      throw new VerifyError("Already verified — pages can no longer be replaced");
+    }
+    const stale = a.read_started_at && Date.now() - Date.parse(a.read_started_at) > READ_STALE_MS;
+    if (a.status === "reading" && !stale) throw new VerifyError("AI is reading this application — try again in a moment");
+    a.audit.push({ at: new Date().toISOString(), by, action: "rescan", from: a.page_count, to: pageCount });
+    a.page_count = pageCount;
+    a.pages_received = [];
+    a.pages_version = (a.pages_version ?? 0) + 1;
+    a.status = "captured";
+    a.extraction = null;
+    a.read_error = null;
+    a.read_started_at = null;
+    return a;
+  });
 }
 
 const FIELD_SOURCES: Record<keyof VerifiedFields, (a: Application) => unknown> = {
@@ -113,8 +143,6 @@ const FIELD_SOURCES: Record<keyof VerifiedFields, (a: Application) => unknown> =
   attachments: (a) => a.extraction?.reader.fields.attachments ?? [],
   signatories: (a) => a.extraction?.reader.fields.signatories ?? [],
 };
-
-export class VerifyError extends Error {}
 
 /**
  * Human confirmation (PRD §4.1 #4): nothing is saved as the application's

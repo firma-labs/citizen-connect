@@ -138,6 +138,8 @@ export interface Application {
   captured_by: string | null;
   page_count: number;
   pages_received: number[];
+  /** Bumped on every rescan; used to bust image caches and drop stale AI reads. */
+  pages_version?: number;
   status: ApplicationStatus;
   read_started_at: string | null;
   read_error: string | null;
