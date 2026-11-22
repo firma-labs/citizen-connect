@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* Built for arm's-length reading in bright daylight at outdoor venues (PRD §10):
+   light, high-contrast palette only, large type and touch targets. */
+:root {
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-forest-50: #f0f7f1;
+  --color-forest-100: #dcefe0;
+  --color-forest-600: #1f7a3a;
+  --color-forest-700: #17632f;
+  --color-forest-800: #124d25;
+  --color-forest-900: #0d3a1c;
+  --color-ink: #111813;
+  --color-muted: #4a554d;
+  --color-line: #cfd8d1;
+  --color-warn-50: #fff7e0;
+  --color-warn-500: #b7791f;
+  --color-warn-700: #8a5a12;
+  --color-danger-50: #fdecec;
+  --color-danger-600: #b42318;
+  --font-sans: var(--font-noto), var(--font-deva), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  font-size: 17px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: #f6f8f6;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.token-text {
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Low-confidence AI fields are highlighted for staff (PRD §7.5). */
+.field-low {
+  background: var(--color-warn-50);
+  border-color: var(--color-warn-500) !important;
+}
+
+input, select, textarea {
+  font-size: 1rem; /* ≥16px stops iOS zooming on focus */
+}
