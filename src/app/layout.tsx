@@ -24,8 +24,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="mr" className={`${noto.variable} ${deva.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+    // suppressHydrationWarning: browser extensions (e.g. ColorZilla, GA opt-out) add
+    // attributes to <html>/<body> before React hydrates. Applies to these two tags only.
+    <html lang="mr" className={`${noto.variable} ${deva.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AppRuntime />
         {children}
       </body>
