@@ -13,6 +13,9 @@ import { generateToken } from "@/lib/token";
 
 type Thumb = LocalPage & { url: string };
 
+type PageInput = Omit<LocalPage, "key" | "idx" | "token">;
+const pageInput = ({ blob, width, height, cropped, original }: LocalPage): PageInput => ({ blob, width, height, cropped, original });
+
 export default function CapturePage() {
   const [settings, hydrated] = useSettings();
   const [token, setToken] = useState<string | null>(null);
@@ -95,7 +98,7 @@ export default function CapturePage() {
   }
 
   async function addProcessed(list: ProcessedPage[]) {
-    const current = (await getPages(token!)).map(({ blob, width, height, cropped }) => ({ blob, width, height, cropped }));
+    const current = (await getPages(token!)).map(pageInput);
     const at = retakeAt.current;
     retakeAt.current = null;
     if (at !== null && at < current.length) current.splice(at, 1, ...list);
@@ -123,15 +126,25 @@ export default function CapturePage() {
   }
 
   async function move(i: number, dir: -1 | 1) {
-    const ps = pages.map(({ blob, width, height, cropped }) => ({ blob, width, height, cropped }));
+    const ps = pages.map(pageInput);
     const j = i + dir;
     if (j < 0 || j >= ps.length) return;
     [ps[i], ps[j]] = [ps[j], ps[i]];
     await savePages(ps);
   }
 
+  /** Undo an auto-crop: swap in the uncropped photo kept on the device. */
+  async function restoreFullPhoto(i: number) {
+    const ps = pages.map(pageInput);
+    const o = ps[i].original;
+    if (!o) return;
+    ps[i] = { blob: o.blob, width: o.width, height: o.height, cropped: false, original: undefined };
+    await savePages(ps);
+    setPreview(null);
+  }
+
   async function remove(i: number) {
-    await savePages(pages.filter((_, k) => k !== i).map(({ blob, width, height, cropped }) => ({ blob, width, height, cropped })));
+    await savePages(pages.filter((_, k) => k !== i).map(pageInput));
     setPreview(null);
   }
 
@@ -255,6 +268,9 @@ export default function CapturePage() {
                   <img src={p.url} alt={`Page ${i + 1}`} className="aspect-[3/4] w-full object-cover" />
                 </button>
                 <span className="absolute left-1.5 top-1.5 rounded-full bg-forest-700 px-2 text-sm font-bold text-white">{i + 1}</span>
+                {p.cropped && (
+                  <span className="absolute right-1.5 top-1.5 rounded-full bg-yellow-400 px-1.5 text-[11px] font-bold text-yellow-950">✂ crop</span>
+                )}
                 <div className="mt-1 flex justify-between">
                   <button onClick={() => void move(i, -1)} disabled={i === 0} className="h-10 w-10 rounded-lg border border-line bg-white disabled:opacity-30" aria-label="Move earlier">‹</button>
                   <button onClick={() => void move(i, 1)} disabled={i === pages.length - 1} className="h-10 w-10 rounded-lg border border-line bg-white disabled:opacity-30" aria-label="Move later">›</button>
@@ -293,6 +309,17 @@ export default function CapturePage() {
               {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
               <img src={preview.url} alt="" className="mx-auto max-w-none" style={{ width: "100%" }} />
             </div>
+            {preview.cropped && preview.original && (
+              <div className="px-3 pt-3">
+                <button
+                  onClick={() => void restoreFullPhoto(preview.idx)}
+                  className="w-full rounded-xl border-2 border-yellow-400 bg-yellow-100 py-3 font-semibold text-yellow-900"
+                >
+                  पूर्ण फोटो वापरा · Use full photo (undo crop)
+                </button>
+                <p className="mt-1 text-center text-xs text-white/70">Check the edges — the signature and mobile number must be visible.</p>
+              </div>
+            )}
             <div className="flex gap-2 p-3">
               <button onClick={() => void remove(preview.idx)} className="flex-1 rounded-xl bg-danger-600 py-3 font-semibold text-white">
                 हे पान काढा · Delete page

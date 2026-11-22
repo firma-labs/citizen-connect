@@ -31,6 +31,8 @@ export interface LocalPage {
   width: number;
   height: number;
   cropped: boolean;
+  /** Uncropped version, so staff can undo a bad auto-crop before upload. */
+  original?: { blob: Blob; width: number; height: number };
 }
 
 interface CCSchema extends DBSchema {
