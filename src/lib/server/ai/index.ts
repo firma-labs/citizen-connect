@@ -16,22 +16,14 @@ export { AIError } from "./claude";
 //   anthropic:claude-opus-5-5      (upper bound, global routing — mock letters only)
 // A Sarvam reader would implement the same Reader interface.
 
-// Default engine when AI_READER isn't set:
-//   AWS credentials present → Claude Opus 5 on Bedrock, Mumbai (ap-south-1), India
-//     cross-Region profile (PRD §7.2 production default; data stays in ap-south-1/2)
-//   else ANTHROPIC_API_KEY → Claude Opus 5 on the Claude API (mock letters only)
-//   else → mock
-const BEDROCK_MODEL = process.env.BEDROCK_MODEL || "in.anthropic.claude-opus-5";
-const hasAwsCreds = !!(
-  process.env.AWS_BEARER_TOKEN_BEDROCK ||
-  process.env.AWS_ACCESS_KEY_ID ||
-  process.env.AWS_PROFILE
-);
-const DEFAULT_SPEC = hasAwsCreds
-  ? `bedrock:${BEDROCK_MODEL}`
-  : process.env.ANTHROPIC_API_KEY
-    ? "anthropic:claude-opus-5"
-    : "mock";
+// Pilot default (PRD §9.1 — mock letters only): the Claude API directly, using
+// ANTHROPIC_API_KEY, with Claude Opus 5 (override with ANTHROPIC_MODEL). Without
+// a key, the mock engine. Bedrock (India cross-Region profile, PRD §7.2) is the
+// production path and is used only when set explicitly, e.g.
+//   AI_READER=bedrock:in.anthropic.claude-opus-5  AWS_REGION=ap-south-1
+const DEFAULT_SPEC = process.env.ANTHROPIC_API_KEY
+  ? `anthropic:${process.env.ANTHROPIC_MODEL || "claude-opus-5"}`
+  : "mock";
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 const effort = (process.env.AI_EFFORT as Effort) || "medium";

@@ -19,11 +19,10 @@ project exposed on 443. Use Chrome on Android; on iPhone use Safari (not the hom
 
 ## Configuration (`.env`, see `.env.example`)
 
-| Engine (auto-selected) | When |
-|---|---|
-| `bedrock:in.anthropic.claude-opus-5`, `AWS_REGION=ap-south-1` | AWS credentials set (`AWS_BEARER_TOKEN_BEDROCK`, IAM keys or `AWS_PROFILE`) |
-| `anthropic:claude-opus-5` | only `ANTHROPIC_API_KEY` set |
-| `mock` | neither |
+The pilot calls the **Claude API directly** with `ANTHROPIC_API_KEY`, using Claude Opus 5
+(`ANTHROPIC_MODEL` to change it). Without a key it uses the mock engine. Bedrock in Mumbai
+(`bedrock:in.anthropic.claude-opus-5`, PRD §7.2) is the production path and is only used when set
+explicitly via `AI_READER` / `AI_REASONER`.
 
 Override per step with `AI_READER` / `AI_REASONER` (`mock`, `anthropic:<model>`, `bedrock:<model>`) for the
 PRD §7.3 comparison runs. Store: local files in `.data/` unless Supabase env vars are set. SMS is logged only
