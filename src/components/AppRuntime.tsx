@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { startSync } from "@/lib/client/sync";
 import { detectEnv, type BrowserEnv } from "@/lib/client/environment";
@@ -7,9 +8,55 @@ import { useHtmlLang, useI18n } from "@/lib/i18n";
 import { Button } from "./ui/Button";
 import { Notice } from "./ui/Notice";
 
-/** Registers the service worker, starts background upload, keeps <html lang> current, warns about in-app browsers. */
+// Pages anyone may see without signing in (the proxy allows the same ones).
+const PUBLIC_PATHS = ["/login", "/track", "/offline"];
+
+/**
+ * Sends a screen that is already open to sign-in once the server says this
+ * device isn't signed in — e.g. sign-in was switched on, or the session
+ * expired, while the app sat open on a phone. New page loads are already
+ * redirected by the proxy; this covers screens that are open or restored from
+ * the offline cache. Checks on load, on every screen change, when the app
+ * comes back to the front, and when the connection returns. Offline it does
+ * nothing, so scanning without signal keeps working.
+ */
+function useSessionGuard() {
+  const pathname = usePathname();
+  useEffect(() => {
+    if (PUBLIC_PATHS.includes(pathname)) return;
+    let stopped = false;
+    const check = async () => {
+      if (stopped || document.visibilityState !== "visible" || !navigator.onLine) return;
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const me: { mode: string; signedIn: boolean } = await res.json();
+        if (me.mode !== "open" && !me.signedIn && !stopped) {
+          const next = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.replace(`/login?next=${next}`);
+        }
+      } catch {
+        // offline or server unreachable — keep working; check again later
+      }
+    };
+    void check();
+    const onVisible = () => void check();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
+    const timer = setInterval(check, 5 * 60_000);
+    return () => {
+      stopped = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+      clearInterval(timer);
+    };
+  }, [pathname]);
+}
+
+/** Registers the service worker, starts background upload, keeps <html lang> current, enforces sign-in, warns about in-app browsers. */
 export function AppRuntime() {
   useHtmlLang();
+  useSessionGuard();
   const { t } = useI18n();
   const [env, setEnv] = useState<BrowserEnv | null>(null);
   const [dismissed, setDismissed] = useState(false);

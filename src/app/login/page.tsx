@@ -7,7 +7,7 @@ import { AppBar, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Field, inputClass } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
-import { saveSettings, useSettings } from "@/lib/client/settings";
+import { saveSettings } from "@/lib/client/settings";
 import { useI18n } from "@/lib/i18n";
 
 export default function LoginPage() {
@@ -25,7 +25,6 @@ export default function LoginPage() {
 
 function Login() {
   const { t } = useI18n();
-  const [settings] = useSettings();
   const params = useSearchParams();
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
@@ -52,8 +51,8 @@ function Login() {
       if (res.status === 503) return setError("notConfigured");
       if (!res.ok) return setError("error");
       const body = await res.json();
-      // Use the name from the user list for this device, unless one is already set.
-      if (body.name && !settings.staff) saveSettings({ staff: body.name });
+      // The signed-in identity replaces any name typed while the app was open to everyone.
+      if (body.name) saveSettings({ staff: body.name });
       window.location.replace(next); // full load so the service worker and sync start signed in
     } catch {
       setError("error");
