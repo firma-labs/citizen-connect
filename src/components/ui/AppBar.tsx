@@ -70,13 +70,13 @@ function DesktopNav() {
   const { t } = useI18n();
   const path = usePathname();
   return (
-    <nav className="mr-2 hidden items-center gap-1 rounded-[var(--radius-control)] bg-paper p-1 lg:flex" aria-label="Main">
+    <nav className="mr-2 hidden items-center gap-1 lg:flex" aria-label="Main">
       {NAV.map((n) => (
         <Link
           key={n.href}
           href={n.href}
           aria-current={path === n.href ? "page" : undefined}
-          className={`flex h-10 items-center gap-2 rounded-[var(--radius-inner)] px-4 font-medium ${path === n.href ? "bg-ink text-white" : "text-ink-2 hover:bg-surface"}`}
+          className={`flex h-10 items-center gap-2 rounded-full px-4 font-medium transition-colors ${path === n.href ? "bg-primary-container font-semibold text-on-primary-container" : "text-ink-2 hover:bg-ink/5"}`}
         >
           <Icon name={n.icon} size={20} />
           {t(n.key)}
@@ -107,9 +107,9 @@ export function BottomNav() {
               <Link
                 href={n.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex h-[4.25rem] flex-col items-center justify-center gap-1 text-[0.76rem] font-medium ${active ? "text-ink" : "text-ink-3"}`}
+                className={`relative flex h-[4.25rem] flex-col items-center justify-center gap-1 text-[0.76rem] font-medium ${active ? "font-semibold text-ink" : "text-ink-3"}`}
               >
-                <span className={`grid h-8 w-14 place-items-center rounded-full transition-colors ${active ? "bg-gradient-to-r from-indigo-100 to-sky-100 text-indigo-800" : ""}`}>
+                <span className={`grid h-8 w-14 place-items-center rounded-full transition-colors ${active ? "bg-primary-container text-on-primary-container" : ""}`}>
                   <Icon name={n.icon} size={22} />
                 </span>
                 {t(n.key)}
@@ -191,13 +191,13 @@ function LanguageMenu() {
         aria-expanded={open}
         aria-label={`${t("lang.label")}: ${current.name}`}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 items-center gap-1.5 rounded-[var(--radius-control)] border-[1.5px] border-line bg-surface px-3 font-medium text-ink hover:border-indigo-200 hover:bg-indigo-50"
+        className="flex h-10 items-center gap-1.5 rounded-full bg-surface-container px-3.5 font-medium text-ink transition-colors hover:bg-surface-container-high"
       >
         <Icon name="globe" size={18} />
         <span className="text-[0.92rem]">{current.name}</span>
       </button>
       {open && (
-        <ul role="menu" className="card absolute right-0 top-12 z-30 w-48 overflow-hidden p-1.5">
+        <ul role="menu" className="absolute right-0 top-12 z-30 w-48 overflow-hidden rounded-[var(--radius-button)] bg-surface-container-low p-1.5 shadow-[var(--elevation-3)]">
           {LOCALES.map((l) => (
             <li key={l.code} role="none">
               <button
@@ -208,7 +208,7 @@ function LanguageMenu() {
                   setLocale(l.code);
                   setOpen(false);
                 }}
-                className={`flex h-12 w-full items-center justify-between rounded-[var(--radius-control)] px-3.5 text-left text-[1rem] ${l.code === locale ? "bg-indigo-50 font-semibold text-indigo-800" : "text-ink hover:bg-paper"}`}
+                className={`flex h-12 w-full items-center justify-between rounded-[var(--radius-control)] px-3.5 text-left text-[1rem] ${l.code === locale ? "bg-primary-container font-semibold text-on-primary-container" : "text-ink hover:bg-ink/5"}`}
               >
                 {l.name}
                 {l.code === locale && <Icon name="check" size={20} />}

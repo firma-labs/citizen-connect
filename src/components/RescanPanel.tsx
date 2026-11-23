@@ -149,7 +149,7 @@ export function RescanPanel({
   const changed = !!pages && (pages.length !== initialUrls.length || pages.some((p) => p.changed));
 
   return (
-    <section className="mb-5 card bg-gradient-to-br from-indigo-50 via-white to-sky-50/50 p-5" aria-labelledby="rescan-title">
+    <section className="mb-5 card p-5" aria-labelledby="rescan-title">
       <h2 id="rescan-title" className="text-[1.2rem] font-bold">
         {t("rescan.title")}
       </h2>
@@ -181,8 +181,8 @@ export function RescanPanel({
                   <button
                     disabled={busy}
                     onClick={() => setEditing(i)}
-                    className={`flex min-h-11 items-center justify-center gap-1.5 rounded-[var(--radius-control)] text-[0.92rem] font-semibold ring-1 ring-inset ${
-                      p.cropped ? "bg-white text-ink ring-rule" : "bg-marigold-50 text-marigold-700 ring-marigold-500"
+                    className={`flex min-h-11 items-center justify-center gap-1.5 rounded-[var(--radius-button)] text-[0.92rem] font-semibold transition-colors ${
+                      p.cropped ? "bg-primary-container text-on-primary-container hover:bg-primary-container-hover" : "bg-marigold-50 text-marigold-700 hover:bg-marigold-200/60"
                     }`}
                   >
                     <Icon name="corners" size={18} />

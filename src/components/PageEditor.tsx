@@ -47,14 +47,14 @@ export function PageEditor({
   }
 
   const button =
-    "flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white/10 px-3 font-semibold text-white ring-1 ring-inset ring-white/30 disabled:opacity-40";
+    "flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-white/12 px-3 font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-40";
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col bg-ink" role="dialog" aria-modal="true" aria-label={title}>
       <div className="flex items-center justify-between gap-2 p-3 text-white" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
         <span className="font-semibold">{mode === "corners" ? t("scan.cornersHint") : title}</span>
         {mode === "view" && (
-          <button onClick={onClose} className="flex h-12 shrink-0 items-center gap-2 rounded-[var(--radius-control)] bg-white/15 px-4 font-semibold">
+          <button onClick={onClose} className="flex h-12 shrink-0 items-center gap-2 rounded-[var(--radius-button)] bg-white/12 px-4 font-semibold transition-colors hover:bg-white/20">
             <Icon name="close" size={20} />
             {t("capture.close")}
           </button>
@@ -100,7 +100,7 @@ export function PageEditor({
                       {t("scan.rotate")}
                     </button>
                   </div>
-                  <div role="radiogroup" aria-label={t("scan.look")} className="grid grid-cols-2 gap-1 rounded-[var(--radius-control)] bg-white/10 p-1">
+                  <div role="radiogroup" aria-label={t("scan.look")} className="grid grid-cols-2 gap-1 rounded-[var(--radius-button)] bg-white/12 p-1">
                     {([true, false] as const).map((clean) => {
                       const on = page.edits!.clean === clean;
                       return (
@@ -174,7 +174,7 @@ function Corners({
 
   const whole = { topLeft: { x: 0, y: 0 }, topRight: { x: w, y: 0 }, bottomRight: { x: w, y: h }, bottomLeft: { x: 0, y: h } };
   const button =
-    "flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white/10 px-3 font-semibold text-white ring-1 ring-inset ring-white/30 disabled:opacity-40";
+    "flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-white/12 px-3 font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-40";
 
   return (
     <>
@@ -192,7 +192,7 @@ function Corners({
           </button>
           <button
             disabled={!ready || busy}
-            className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white font-semibold text-ink disabled:opacity-40"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-white font-semibold text-ink disabled:opacity-40"
             onClick={() => editor.current && onApply(editor.current.getCorners())}
           >
             <Icon name="check" size={20} />

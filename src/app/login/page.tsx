@@ -64,7 +64,6 @@ function Login() {
   return (
     <div className="mx-auto max-w-md">
       <div className="relative isolate overflow-hidden rounded-[var(--radius-hero)] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6">
-        <span aria-hidden className="pointer-events-none absolute -right-12 -top-12 -z-10 h-40 w-40 rounded-full bg-white/60" />
         <h1 className="text-[1.7rem] font-bold tracking-tight">{t("login.title")}</h1>
         <p className="mt-1 text-ink-2">{t("login.body")}</p>
       </div>

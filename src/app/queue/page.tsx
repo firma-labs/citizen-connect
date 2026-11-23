@@ -168,16 +168,6 @@ export default function QueuePage() {
   );
 }
 
-const EDGE: Record<string, string> = {
-  queued: "border-l-marigold-200",
-  captured: "border-l-sky-200",
-  reading: "border-l-sky-500",
-  read: "border-l-marigold-500 bg-gradient-to-br from-marigold-50/70 via-white to-white",
-  read_failed: "border-l-red-500 bg-gradient-to-br from-red-50/70 via-white to-white",
-  routed: "border-l-mint-500",
-  in_progress: "border-l-indigo-600",
-  closed: "border-l-ink",
-};
 
 function Item({
   token,
@@ -214,7 +204,7 @@ function Item({
   ].filter(Boolean);
 
   return (
-    <li className={`card border-l-4 p-4 ${EDGE[status] ?? "border-l-rule-strong"}`}>
+    <li className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button onClick={onShowToken} className="token flex items-center gap-1.5 text-[1.1rem] text-ink underline-offset-4 hover:underline">
           {token}

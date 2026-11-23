@@ -8,7 +8,7 @@ export type Attention = "low" | "medium" | undefined;
 
 export const inputClass = (attention?: Attention, invalid?: boolean) =>
   [
-    "block w-full rounded-[var(--radius-control)] border-[1.5px] bg-surface px-4 py-3 text-ink shadow-[inset_0_1px_2px_rgb(28_31_51/0.04)]",
+    "block w-full rounded-[var(--radius-control)] border bg-surface px-4 py-3 text-ink transition-colors hover:border-ink-2",
     "placeholder:text-ink-3 min-h-12",
     invalid ? "border-red-600" : attention === "low" ? "border-marigold-500 bg-marigold-50/50" : attention === "medium" ? "border-marigold-200" : "border-line",
   ].join(" ");
@@ -38,7 +38,7 @@ export function Field({
   const { t, hint } = useI18n();
   const en = hint(label);
   return (
-    <div id={`field-${id}`} className={`scroll-mt-24 ${attention ? "-mx-3 rounded-[var(--radius-panel)] bg-gradient-to-br px-3 py-3 " + (attention === "low" ? "from-marigold-50 to-white" : "from-marigold-50/50 to-white") : ""}`}>
+    <div id={`field-${id}`} className={`scroll-mt-24 ${attention ? "-mx-3 rounded-[var(--radius-panel)] px-3 py-3 " + (attention === "low" ? "bg-marigold-50" : "bg-marigold-50/60") : ""}`}>
       <label htmlFor={id} className="block">
         <span className="block font-semibold text-ink">{t(label)}</span>
         {en && <span className="block text-[0.82rem] leading-snug text-ink-3">{en}</span>}

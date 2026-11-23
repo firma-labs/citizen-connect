@@ -302,7 +302,7 @@ function Verify() {
                         key={u}
                         onClick={() => setViewing(i)}
                         aria-current={viewing === i}
-                        className={`h-11 min-w-11 rounded-[var(--radius-control)] border-[1.5px] px-3 font-semibold ${viewing === i ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:border-indigo-200 hover:bg-indigo-50"}`}
+                        className={`h-11 min-w-11 rounded-[var(--radius-control)] px-3 font-semibold ${viewing === i ? "bg-primary-container text-on-primary-container" : "border border-line text-ink-2 hover:bg-primary/8"}`}
                       >
                         {i + 1}
                         {pageType(i) ? <span className="ml-1.5 font-normal opacity-80">{pageType(i)}</span> : null}
@@ -337,7 +337,7 @@ function Verify() {
             )}
 
             {!archived && !rescanning && (status === "captured" || status === "reading") && (
-              <div className="flex items-start gap-4 card bg-gradient-to-br from-sky-50 via-white to-white p-5" role="status">
+              <div className="flex items-start gap-4 rounded-[var(--radius-panel)] bg-sky-50 p-5" role="status">
                 <span className="mt-1 h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-sky-100 border-t-sky-500" aria-hidden />
                 <div>
                   <p className="font-bold">{t("verify.reading.title")}</p>
@@ -481,7 +481,7 @@ function Verify() {
                             onClick={() =>
                               set("secondary_departments", on ? form.secondary_departments.filter((x) => x !== d.code) : [...form.secondary_departments, d.code])
                             }
-                            className={`flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] border-[1.5px] px-3.5 text-[0.92rem] font-semibold ${on ? "border-indigo-600 bg-indigo-50 text-indigo-900" : "border-line bg-surface text-ink-2 hover:border-indigo-200 hover:bg-indigo-50"}`}
+                            className={`flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] px-3.5 text-[0.92rem] font-semibold transition-colors ${on ? "bg-primary-container text-on-primary-container" : "border border-line text-ink-2 hover:bg-primary/8"}`}
                           >
                             {on && <Icon name="check" size={16} />}
                             {refLabel(d, locale)}
@@ -499,7 +499,7 @@ function Verify() {
                       {PRIORITIES.map((p) => (
                         <label
                           key={p.code}
-                          className={`flex min-h-12 cursor-pointer items-center justify-center rounded-[var(--radius-control)] border-[1.5px] px-3 font-medium has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${form.priority === p.code ? (p.code === "urgent" ? "border-red-600 bg-red-600 text-white" : "border-ink bg-ink text-white") : "border-line bg-surface text-ink-2 hover:border-indigo-200 hover:bg-indigo-50"}`}
+                          className={`flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-control)] px-3 font-semibold transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${form.priority === p.code ? (p.code === "urgent" ? "bg-red-50 text-red-700" : "bg-primary-container text-on-primary-container") : "border border-line text-ink-2 hover:bg-primary/8"}`}
                         >
                           <input type="radio" name="priority" value={p.code} checked={form.priority === p.code} onChange={() => set("priority", p.code)} className="sr-only" />
                           {refLabel(p, locale)}
@@ -541,9 +541,9 @@ function Verify() {
                   </details>
                 )}
 
-                <div className="card bg-gradient-to-br from-indigo-50 via-white to-sky-50/60 p-5">
+                <div className="rounded-[var(--radius-panel)] bg-primary-container p-5">
                   <label className="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-7 w-7 shrink-0 accent-indigo-700" />
+                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-7 w-7 shrink-0 accent-primary" />
                     <span className="font-semibold">{t("verify.confirm")}</span>
                   </label>
                   {saveError && (
@@ -598,8 +598,7 @@ function Verify() {
       return <Notice tone="done">{t("verify.attention.none")}</Notice>;
     }
     return (
-      <section aria-labelledby="attention-title" className="relative isolate overflow-hidden rounded-[var(--radius-panel)] border border-l-4 border-marigold-200 bg-gradient-to-br from-marigold-50 via-marigold-50/50 to-white p-5">
-        <span aria-hidden className="pointer-events-none absolute -bottom-12 -right-12 -z-10 h-36 w-36 rounded-full bg-marigold-200/40" />
+      <section aria-labelledby="attention-title" className="rounded-[var(--radius-panel)] bg-marigold-50 p-5">
         <h2 id="attention-title" className="flex items-center gap-2 text-[1.15rem] font-bold">
           <Icon name="alert" className="text-marigold-700" />
           {flagged.length === 1 ? t("verify.attention.one") : t("verify.attention.title", { n: flagged.length })}

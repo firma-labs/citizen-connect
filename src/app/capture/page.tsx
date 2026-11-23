@@ -218,10 +218,9 @@ export default function CapturePage() {
         <button
           onClick={() => cameraInput.current?.click()}
           disabled={!token}
-          className="group relative isolate flex min-h-52 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--radius-hero)] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6 text-ink transition-transform active:scale-[0.99] disabled:opacity-50"
+          className="group relative isolate flex min-h-52 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--radius-hero)] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6 text-ink transition-[filter] hover:brightness-[0.98] active:brightness-95 disabled:opacity-50"
         >
-          <span aria-hidden className="pointer-events-none absolute -right-12 -top-12 -z-10 h-40 w-40 rounded-full bg-white/50" />
-          <span className="relative grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-ink text-white shadow-[0_10px_24px_-10px_rgb(28_31_51/0.6)]">
+          <span className="relative grid h-[4.5rem] w-[4.5rem] place-items-center rounded-[1.25rem] bg-primary text-on-primary shadow-[var(--elevation-3)]">
             <Icon name="camera" size={32} />
           </span>
           <span className="relative text-[1.25rem] font-semibold leading-snug">
@@ -321,7 +320,7 @@ export default function CapturePage() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => void remove(preview.idx)}
-              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white/10 font-semibold text-white ring-1 ring-inset ring-white/30"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-white/12 font-semibold text-white transition-colors hover:bg-white/20"
             >
               <Icon name="trash" size={20} />
               {t("capture.delete")}
@@ -332,7 +331,7 @@ export default function CapturePage() {
                 setPreview(null);
                 cameraInput.current?.click();
               }}
-              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white font-semibold text-ink"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-white font-semibold text-ink"
             >
               <Icon name="camera" size={20} />
               {t("capture.retake")}

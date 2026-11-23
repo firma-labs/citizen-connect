@@ -62,7 +62,7 @@ export function ArchiveDialog({ token, status, onClose, onDone }: { token: strin
 
   return (
     <div className="fixed inset-0 z-40 overflow-auto bg-ink/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="archive-title" onClick={onClose}>
-      <form onSubmit={submit} className="card mx-auto mt-[8vh] max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+      <form onSubmit={submit} className="mx-auto mt-[8vh] max-w-md rounded-[var(--radius-dialog)] bg-surface-container-low p-6 shadow-[var(--elevation-3)]" onClick={(e) => e.stopPropagation()}>
         <h2 id="archive-title" className="text-[1.25rem] font-bold">
           {t("archive.title", { token })}
         </h2>
@@ -75,13 +75,13 @@ export function ArchiveDialog({ token, status, onClose, onDone }: { token: strin
 
         <fieldset className="mt-4">
           <legend className="font-semibold">{t("archive.reasonLabel")}</legend>
-          <div className="mt-2 grid gap-2">
+          <div className="mt-2 grid gap-1">
             {ARCHIVE_REASONS.map((r) => (
               <label
                 key={r}
-                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-[var(--radius-control)] border-[1.5px] px-3.5 font-medium has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${reason === r ? "border-ink bg-indigo-50" : "border-line bg-surface hover:bg-indigo-50"}`}
+                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-[var(--radius-control)] px-3 font-medium transition-colors ${reason === r ? "bg-primary-container text-on-primary-container" : "hover:bg-ink/5"}`}
               >
-                <input type="radio" name="reason" value={r} checked={reason === r} onChange={() => setReason(r)} className="h-5 w-5 accent-[var(--color-ink)]" />
+                <input type="radio" name="reason" value={r} checked={reason === r} onChange={() => setReason(r)} className="h-5 w-5 accent-primary" />
                 {t(`archive.reasons.${r}`)}
               </label>
             ))}
@@ -100,7 +100,7 @@ export function ArchiveDialog({ token, status, onClose, onDone }: { token: strin
           </Notice>
         )}
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
-          <Button variant="secondary" onClick={onClose} disabled={busy}>
+          <Button variant="quiet" onClick={onClose} disabled={busy}>
             {t("archive.cancel")}
           </Button>
           <Button type="submit" icon="archive" className="flex-1" disabled={busy}>

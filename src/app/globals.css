@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
 /*
- * Janata Darbar design tokens — pastel system.
+ * Janata Darbar design tokens — pastel system with Material 3 roles.
  * White page; each kind of information has its own pastel family
  * (sky = in progress, peach = needs a person, rose = late or failed,
- * mint = done, violet = selection and links). Primary actions are dark ink
- * buttons with a violet pressed edge; secondary actions are bordered.
- * Text colours keep WCAG 2.2 AA contrast on their tints.
+ * mint = done, violet = brand, selection and links).
+ * Material 3 habits: flat tinted surfaces instead of outlined or accent-bar
+ * cards; filled (primary), tonal (primary container) and text buttons with
+ * state layers instead of borders; selected chips and segments fill with the
+ * container colour and show a check. Text keeps WCAG 2.2 AA contrast.
  */
 :root {
   color-scheme: light;
@@ -60,25 +62,38 @@
 
   --color-focus: #ffd43b;
 
+  /* Material 3 colour roles */
+  --color-primary: #5a43cf; /* filled buttons, active controls — white text 6.7:1 */
+  --color-primary-hover: #4d37bd;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #e9e3ff; /* tonal buttons, selected chips and segments */
+  --color-primary-container-hover: #ddd4ff;
+  --color-on-primary-container: #35267f; /* 9.7:1 on the container */
+  --color-surface-container-low: #f8f6fd;
+  --color-surface-container: #f3f1fa; /* cards */
+  --color-surface-container-high: #ece9f6; /* fields inside cards, switch tracks */
+
   --font-sans: var(--font-poppins), system-ui, sans-serif;
 
-  /* Corner scale (close to Material 3 small / medium / large): buttons,
-     fields and options are crisp rectangles; status tags, counters, avatars
-     and round icon buttons stay pill/circle so states read differently from actions. */
-  --radius-control: 8px; /* buttons, inputs, options */
-  --radius-inner: 5px; /* item inside a padded control (segmented choices) */
-  --radius-panel: 12px; /* cards, notices, tiles */
-  --radius-hero: 16px; /* large feature panels */
+  /* Corner scale (Material 3 small / medium / large; buttons use the
+     Material 3 Expressive "square" shape). Status tags, counters, avatars and
+     round icon buttons stay pill/circle so states read differently from actions. */
+  --radius-control: 8px; /* inputs, chips */
+  --radius-button: 12px; /* buttons */
+  --radius-inner: 6px; /* item inside a padded control (segmented choices) */
+  --radius-panel: 16px; /* cards, notices, tiles */
+  --radius-hero: 20px; /* large feature panels */
+  --radius-dialog: 24px; /* dialogs and sheets */
+
+  /* Material 3 elevation (used sparingly: dialogs, hovered buttons) */
+  --elevation-1: 0 1px 2px rgb(28 31 51 / 0.18), 0 1px 3px 1px rgb(28 31 51 / 0.09);
+  --elevation-3: 0 4px 8px 3px rgb(28 31 51 / 0.1), 0 1px 3px rgb(28 31 51 / 0.2);
 }
 
-/* White card with a hairline and a soft, low shadow. */
+/* Material 3 filled card: a flat tinted surface — no outline, no accent bar, no shadow. */
 @utility card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-rule);
+  background: var(--color-surface-container);
   border-radius: var(--radius-panel);
-  box-shadow:
-    0 1px 2px rgb(28 31 51 / 0.04),
-    0 12px 32px -20px rgb(28 31 51 / 0.22);
 }
 
 html {
@@ -109,9 +124,13 @@ h3 {
   outline-offset: 2px;
   box-shadow: 0 0 0 6px var(--color-focus);
 }
-/* Fields: the halo sits on the field itself, so the border also turns dark. */
-:where(input, select, textarea):focus-visible {
-  border-color: var(--color-ink);
+/* Text fields (Material 3 outlined field): the outline turns into a 2px
+   primary border — visible without the halo, which would crowd the text.
+   Checkboxes and radios keep the halo. */
+:where(input:not([type="checkbox"], [type="radio"]), select, textarea):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 input,

@@ -41,7 +41,7 @@ export default function SettingsPage() {
         <h1 className="mb-6 text-[1.7rem] font-bold tracking-tight">{t("settings.title")}</h1>
 
         {me?.signedIn && (
-          <div className="card mb-8 flex items-center justify-between gap-3 bg-gradient-to-br from-indigo-50 via-white to-white p-4">
+          <div className="card mb-8 flex items-center justify-between gap-3 p-4">
             <div className="min-w-0">
               <p className="text-[0.85rem] text-ink-3">{t("settings.account")}</p>
               <p className="truncate font-semibold">{me.name ?? me.mobile}</p>
@@ -103,7 +103,7 @@ export default function SettingsPage() {
           options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.tag }))}
         />
 
-        <div className="mt-8 divide-y divide-rule card">
+        <div className="mt-8 divide-y divide-surface card">
           {locale !== "en" && <Toggle label="settings.hints.label" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />}
           <Toggle label="settings.autoCrop.label" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
         </div>
@@ -115,7 +115,7 @@ export default function SettingsPage() {
               {t("settings.offline")}
             </Notice>
           ) : (
-            <dl className="mt-3 divide-y divide-rule card">
+            <dl className="mt-3 divide-y divide-surface card">
               {(
                 [
                   ["settings.store", health?.store],
@@ -170,16 +170,18 @@ function Choice({
         {t(title)}
         {hint(title) && <span className="block text-[0.82rem] font-normal text-ink-3">{hint(title)}</span>}
       </legend>
-      <div className="mt-2 grid grid-cols-3 gap-1 rounded-[var(--radius-control)] border-[1.5px] border-line bg-surface p-1">
+      {/* Material 3 segmented button: one outline, the selected segment filled with a check */}
+      <div className="mt-2 grid grid-cols-3 overflow-hidden rounded-[var(--radius-button)] border border-line">
         {options.map((o) => {
           const on = o.value === value;
           return (
             <label
               key={o.value}
               lang={o.lang}
-              className={`flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-inner)] px-2 text-center font-medium leading-tight has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-focus ${on ? "bg-ink text-white" : "text-ink-2 hover:bg-indigo-50"}`}
+              className={`flex min-h-12 cursor-pointer items-center justify-center gap-1.5 border-line px-2 text-center font-semibold leading-tight transition-colors [&:not(:first-child)]:border-l has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:-outline-offset-4 has-[:focus-visible]:outline-ink ${on ? "bg-primary-container text-on-primary-container" : "text-ink-2 hover:bg-primary/8"}`}
             >
               <input type="radio" name={title} value={o.value} checked={on} onChange={() => onChange(o.value)} className="sr-only" />
+              {on && <Icon name="check" size={18} />}
               {o.label}
             </label>
           );
@@ -205,9 +207,14 @@ function Toggle({ label, help, checked, onChange }: { label: MessageKey; help: M
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${checked ? "bg-ink" : "bg-rule-strong"}`}
+        className={`relative h-8 w-[3.25rem] shrink-0 rounded-full border-2 transition-colors ${checked ? "border-primary bg-primary" : "border-line bg-surface-container-high"}`}
       >
-        <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-[left] ${checked ? "left-7" : "left-1"}`} />
+        {/* Material 3 switch: small outlined thumb when off, large white thumb with a check when on */}
+        <span
+          className={`absolute top-1/2 grid -translate-y-1/2 place-items-center rounded-full transition-all ${checked ? "left-[1.375rem] h-6 w-6 bg-white text-primary" : "left-1.5 h-4 w-4 bg-line"}`}
+        >
+          {checked && <Icon name="check" size={16} />}
+        </span>
       </button>
     </div>
   );
