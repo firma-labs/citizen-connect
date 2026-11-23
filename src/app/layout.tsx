@@ -12,7 +12,14 @@ export const metadata: Metadata = {
   description: "Janata Darbar intake: scan applications, issue tokens, check and route.",
   applicationName: "Janata Darbar",
   appleWebApp: { capable: true, title: "Janata Darbar", statusBarStyle: "default" },
-  icons: { icon: "/pwa-icon/192", apple: "/pwa-icon/180" },
+  icons: {
+    icon: [
+      { url: "/pwa-icon/32", sizes: "32x32", type: "image/png" },
+      { url: "/pwa-icon/192", sizes: "192x192", type: "image/png" },
+    ],
+    // iPhone home-screen icon (Safari and Chrome on iOS use this, not the manifest).
+    apple: [{ url: "/pwa-icon/180", sizes: "180x180", type: "image/png" }],
+  },
   formatDetection: { telephone: false },
 };
 
