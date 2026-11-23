@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { processPhoto, type ProcessedPage } from "@/lib/client/image";
+import { processPhoto, warmUpScanner, type ProcessedPage } from "@/lib/client/image";
 import { useSettings } from "@/lib/client/settings";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "./ui/Button";
 import { Icon } from "./ui/Icon";
 import { Notice } from "./ui/Notice";
+import { PageEditor } from "./PageEditor";
 
 interface Page extends ProcessedPage {
   url: string;
@@ -35,6 +36,7 @@ export function RescanPanel({
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
   const camera = useRef<HTMLInputElement>(null);
   const target = useRef<number | null>(null); // index to replace, or null = add at end
   const urls = useRef<string[]>([]); // every object URL created, revoked on unmount
@@ -68,6 +70,7 @@ export function RescanPanel({
   }, [initialUrls]);
 
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
+  useEffect(() => warmUpScanner(), []);
 
   useEffect(() => {
     const el = camera.current;
@@ -171,20 +174,16 @@ export function RescanPanel({
                 <Button size="md" icon="camera" disabled={busy} onClick={() => shoot(i)}>
                   {t("rescan.retake")}
                 </Button>
-                {p.cropped && p.original && (
+                {p.original && (
                   <button
                     disabled={busy}
-                    onClick={() =>
-                      update((ps) => {
-                        const o = ps[i].original!;
-                        ps[i] = { blob: o.blob, width: o.width, height: o.height, cropped: false, url: objectUrl(o.blob), changed: true };
-                        return ps;
-                      })
-                    }
-                    className="flex min-h-11 items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-marigold-50 text-[0.92rem] font-semibold text-marigold-700 ring-1 ring-inset ring-marigold-500"
+                    onClick={() => setEditing(i)}
+                    className={`flex min-h-11 items-center justify-center gap-1.5 rounded-[var(--radius-control)] text-[0.92rem] font-semibold ring-1 ring-inset ${
+                      p.cropped ? "bg-white text-ink ring-rule" : "bg-marigold-50 text-marigold-700 ring-marigold-500"
+                    }`}
                   >
-                    <Icon name="crop" size={18} />
-                    {t("rescan.useFull")}
+                    <Icon name="corners" size={18} />
+                    {p.cropped ? t("scan.edit") : t("capture.checkEdges")}
                   </button>
                 )}
                 <Button variant="quiet" icon="trash" disabled={busy || pages.length === 1} onClick={() => update((ps) => ps.filter((_, k) => k !== i))} className="text-red-600">
@@ -226,6 +225,16 @@ export function RescanPanel({
         </Button>
       </div>
       <p className="mt-2 text-[0.88rem] text-ink-3">{t("rescan.note")}</p>
+
+      {editing !== null && pages?.[editing] && (
+        <PageEditor
+          title={t("capture.page", { n: editing + 1 })}
+          page={pages[editing]}
+          url={pages[editing].url}
+          onSave={(next) => update((ps) => ((ps[editing] = { ...next, url: objectUrl(next.blob), changed: true }), ps))}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </section>
   );
 }

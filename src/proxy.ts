@@ -26,5 +26,5 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   // Everything except build assets, icons, the manifest and the service worker.
-  matcher: ["/((?!_next/static|_next/image|pwa-icon|manifest.webmanifest|sw.js|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|vendor/|pwa-icon|manifest.webmanifest|sw.js|favicon.ico).*)"],
 };

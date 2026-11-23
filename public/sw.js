@@ -2,6 +2,7 @@
  * - App shell (intake pages + their JS/CSS) cached so capture works with no signal.
  * - /_next/static: cache-first in production (content-hashed). In dev, network-first
  *   for everything so code changes show up immediately.
+ * - /vendor/*: cache-first (versioned file names), so page clean-up works offline.
  * - /api/*: never cached — capture data lives in IndexedDB and is synced by the app.
  */
 const DEV = new URL(self.location.href).searchParams.get("dev") === "1";
@@ -73,6 +74,11 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, SHELL, "/offline"));
+    return;
+  }
+  // Versioned vendor files (OpenCV.js for page clean-up): fetched once, then offline.
+  if (url.pathname.startsWith("/vendor/")) {
+    event.respondWith(cacheFirst(request, STATIC));
     return;
   }
   if (url.pathname.startsWith("/_next/static/") && !DEV) {

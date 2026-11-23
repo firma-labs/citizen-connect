@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LiveCamera } from "@/components/LiveCamera";
+import { PageEditor } from "@/components/PageEditor";
 import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { TokenCard } from "@/components/TokenCard";
 import { deleteApp, getDraft, getPages, patchApp, putApp, setPages, type LocalPage } from "@/lib/client/db";
-import { processPhoto, type ProcessedPage } from "@/lib/client/image";
+import { processPhoto, warmUpScanner, type ProcessedPage } from "@/lib/client/image";
 import { useSettings } from "@/lib/client/settings";
 import { syncNow } from "@/lib/client/sync";
 import { useI18n } from "@/lib/i18n";
@@ -17,7 +17,7 @@ import { generateToken } from "@/lib/token";
 type Thumb = LocalPage & { url: string };
 
 type PageInput = Omit<LocalPage, "key" | "idx" | "token">;
-const pageInput = ({ blob, width, height, cropped, original }: LocalPage): PageInput => ({ blob, width, height, cropped, original });
+const pageInput = ({ blob, width, height, cropped, original, edits }: LocalPage): PageInput => ({ blob, width, height, cropped, original, edits });
 
 export default function CapturePage() {
   const [settings, hydrated] = useSettings();
@@ -28,18 +28,21 @@ export default function CapturePage() {
   const [busy, setBusy] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Thumb | null>(null);
-  const [useCameraApp, setUseCameraApp] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const retakeAt = useRef<number | null>(null);
 
   const loadPages = useCallback(async (t: string) => {
-    const ps = await getPages(t);
+    const thumbs: Thumb[] = (await getPages(t)).map((p) => ({ ...p, url: URL.createObjectURL(p.blob) }));
     setPagesState((old) => {
       old.forEach((p) => URL.revokeObjectURL(p.url));
-      return ps.map((p) => ({ ...p, url: URL.createObjectURL(p.blob) }));
+      return thumbs;
     });
+    return thumbs;
   }, []);
+
+  // Fetch the scanner libraries (page straightening + clean-up) while staff get ready.
+  useEffect(() => warmUpScanner(), []);
 
   // Resume the unfinished draft (survives app close, backgrounding, screen lock) or start one.
   const startDraft = useCallback(async () => {
@@ -96,9 +99,9 @@ export default function CapturePage() {
   }, []);
 
   async function savePages(next: Omit<LocalPage, "key" | "idx" | "token">[]) {
-    if (!token) return;
+    if (!token) return [];
     await setPages(token, next);
-    await loadPages(token);
+    return loadPages(token);
   }
 
   async function addProcessed(list: ProcessedPage[]) {
@@ -137,14 +140,12 @@ export default function CapturePage() {
     await savePages(ps);
   }
 
-  /** Undo an auto-crop: swap in the uncropped photo kept on the device. */
-  async function restoreFullPhoto(i: number) {
+  /** Save a page edited in the page editor (corners, rotation, scan/photo) and keep showing it. */
+  async function replacePage(i: number, next: ProcessedPage) {
     const ps = pages.map(pageInput);
-    const o = ps[i].original;
-    if (!o) return;
-    ps[i] = { blob: o.blob, width: o.width, height: o.height, cropped: false, original: undefined };
-    await savePages(ps);
-    setPreview(null);
+    ps[i] = next;
+    const thumbs = await savePages(ps);
+    setPreview(thumbs[i] ?? null);
   }
 
   async function remove(i: number) {
@@ -198,8 +199,6 @@ export default function CapturePage() {
     );
   }
 
-  const live = settings.liveCamera && !useCameraApp;
-
   return (
     <>
       <AppBar title="capture.title" />
@@ -216,41 +215,25 @@ export default function CapturePage() {
           {token && <p className="token pb-1 text-[0.95rem] text-ink-3">{token}</p>}
         </div>
 
-        {live ? (
-          <LiveCamera
-            autoCrop={settings.autoCrop}
-            onCapture={(p) => void addProcessed([p])}
-            onUseCameraApp={() => {
-              setUseCameraApp(true);
-              cameraInput.current?.click();
-            }}
-          />
-        ) : (
-          <button
-            onClick={() => cameraInput.current?.click()}
-            disabled={!token}
-            className="group relative isolate flex min-h-52 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[28px] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6 text-ink transition-transform active:scale-[0.99] disabled:opacity-50"
-          >
-            <span aria-hidden className="pointer-events-none absolute -right-12 -top-12 -z-10 h-40 w-40 rounded-full bg-white/50" />
-            <span className="relative grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-ink text-white shadow-[0_10px_24px_-10px_rgb(28_31_51/0.6)]">
-              <Icon name="camera" size={32} />
-            </span>
-            <span className="relative text-[1.25rem] font-semibold leading-snug">
-              {pages.length ? t("capture.next", { n: pages.length + 1 }) : t("capture.first")}
-            </span>
-          </button>
-        )}
+        <button
+          onClick={() => cameraInput.current?.click()}
+          disabled={!token}
+          className="group relative isolate flex min-h-52 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[28px] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6 text-ink transition-transform active:scale-[0.99] disabled:opacity-50"
+        >
+          <span aria-hidden className="pointer-events-none absolute -right-12 -top-12 -z-10 h-40 w-40 rounded-full bg-white/50" />
+          <span className="relative grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-ink text-white shadow-[0_10px_24px_-10px_rgb(28_31_51/0.6)]">
+            <Icon name="camera" size={32} />
+          </span>
+          <span className="relative text-[1.25rem] font-semibold leading-snug">
+            {pages.length ? t("capture.next", { n: pages.length + 1 }) : t("capture.first")}
+          </span>
+        </button>
         <p className="mt-2 text-[0.92rem] text-ink-3">{t("capture.tip")}</p>
 
         <div className="mt-2 flex flex-wrap gap-x-2">
           <Button variant="quiet" icon="image" onClick={() => galleryInput.current?.click()}>
             {t("capture.gallery")}
           </Button>
-          {settings.liveCamera && (
-            <Button variant="quiet" icon="camera" onClick={() => setUseCameraApp((v) => !v)}>
-              {useCameraApp ? t("capture.liveView") : t("capture.cameraApp")}
-            </Button>
-          )}
         </div>
 
         {busy > 0 && (
@@ -278,10 +261,10 @@ export default function CapturePage() {
                   <span className="absolute left-2 top-2 grid h-8 min-w-8 place-items-center rounded-full bg-ink px-2 text-[0.9rem] font-bold text-white">
                     {i + 1}
                   </span>
-                  {p.cropped && (
+                  {p.original && !p.cropped && (
                     <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-marigold-50/95 py-1 text-[0.82rem] font-semibold text-marigold-700">
-                      <Icon name="crop" size={15} />
-                      {t("capture.cropped")}
+                      <Icon name="corners" size={15} />
+                      {t("capture.checkEdges")}
                     </span>
                   )}
                 </button>
@@ -328,56 +311,34 @@ export default function CapturePage() {
       <BottomNav />
 
       {preview && (
-        <div className="fixed inset-0 z-30 flex flex-col bg-ink" role="dialog" aria-modal="true" aria-label={t("capture.page", { n: preview.idx + 1 })}>
-          <div className="flex items-center justify-between gap-2 p-3 text-white" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
-            <span className="font-semibold">
-              {t("capture.page", { n: preview.idx + 1 })}
-              {preview.cropped ? ` · ${t("capture.cropped")}` : ""}
-            </span>
-            <button onClick={() => setPreview(null)} className="flex h-12 items-center gap-2 rounded-full bg-white/15 px-4 font-semibold">
-              <Icon name="close" size={20} />
-              {t("capture.close")}
+        <PageEditor
+          title={t("capture.page", { n: preview.idx + 1 })}
+          page={preview}
+          url={preview.url}
+          onSave={(next) => replacePage(preview.idx, next)}
+          onClose={() => setPreview(null)}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => void remove(preview.idx)}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white/10 font-semibold text-white ring-1 ring-inset ring-white/30"
+            >
+              <Icon name="trash" size={20} />
+              {t("capture.delete")}
+            </button>
+            <button
+              onClick={() => {
+                retakeAt.current = preview.idx;
+                setPreview(null);
+                cameraInput.current?.click();
+              }}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white font-semibold text-ink"
+            >
+              <Icon name="camera" size={20} />
+              {t("capture.retake")}
             </button>
           </div>
-          <div className="flex-1 overflow-auto">
-            {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
-            <img src={preview.url} alt="" className="mx-auto w-full max-w-3xl" />
-          </div>
-          <div className="space-y-2 bg-ink p-3" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-            {preview.cropped && preview.original && (
-              <div>
-                <button
-                  onClick={() => void restoreFullPhoto(preview.idx)}
-                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-marigold-50 font-semibold text-marigold-700"
-                >
-                  <Icon name="crop" size={20} />
-                  {t("capture.useFull")}
-                </button>
-                <p className="mt-1 text-center text-[0.85rem] text-white/75">{t("capture.useFullHint")}</p>
-              </div>
-            )}
-            <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
-              <button
-                onClick={() => void remove(preview.idx)}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white/10 font-semibold text-white ring-1 ring-inset ring-white/30"
-              >
-                <Icon name="trash" size={20} />
-                {t("capture.delete")}
-              </button>
-              <button
-                onClick={() => {
-                  retakeAt.current = preview.idx;
-                  setPreview(null);
-                  cameraInput.current?.click();
-                }}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-white font-semibold text-ink"
-              >
-                <Icon name="camera" size={20} />
-                {t("capture.retake")}
-              </button>
-            </div>
-          </div>
-        </div>
+        </PageEditor>
       )}
     </>
   );

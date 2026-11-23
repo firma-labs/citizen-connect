@@ -106,7 +106,6 @@ export default function SettingsPage() {
         <div className="mt-8 divide-y divide-rule card">
           {locale !== "en" && <Toggle label="settings.hints" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />}
           <Toggle label="settings.autoCrop" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
-          <Toggle label="settings.live" help="settings.live.hint" checked={s.liveCamera} onChange={(v) => saveSettings({ liveCamera: v })} />
         </div>
 
         <section className="mt-10">

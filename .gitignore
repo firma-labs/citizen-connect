@@ -43,3 +43,6 @@ next-env.d.ts
 # local pilot data store (mock letters only)
 /.data/
 !.env.example
+
+# OpenCV.js, copied from node_modules on install (scripts/copy-vendor.mjs)
+/public/vendor/

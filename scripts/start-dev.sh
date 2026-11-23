@@ -66,6 +66,7 @@ command -v node >/dev/null || fail_and_stop "node not found"
 if [ ! -d node_modules ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
   npm install || fail_and_stop "npm install failed"
 fi
+node scripts/copy-vendor.mjs || fail_and_stop "could not copy OpenCV.js into public/vendor"
 log_ok "in $(pwd), node $(node -v)"
 
 if [ ! -f .env.local ] && ! grep -qE "^ANTHROPIC_API_KEY=.+" .env 2>/dev/null; then

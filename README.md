@@ -49,7 +49,7 @@ an error saying so. Mock or redacted letters only (PRD §9.1).
 
 ## Layout
 
-- `src/app/capture` — camera capture (phone camera app via file input; optional live view), auto-crop, token + QR
+- `src/app/capture` — camera capture (phone camera app via file input), page straightening ([scanic](https://www.npmjs.com/package/scanic)) and shadow removal ([OpenCV.js](https://www.npmjs.com/package/@techstark/opencv-js), served from `public/vendor`, copied on `npm install`), token + QR
 - `src/app/queue`, `src/app/verify` — sync status, AI result review with low-confidence highlights, save & route
 - `src/app/track` — public status page (token + mobile)
 - `src/lib/client` — IndexedDB offline queue, sync engine, image processing

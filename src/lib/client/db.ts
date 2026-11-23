@@ -1,5 +1,6 @@
 "use client";
 
+import type { PageEdits } from "./image";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
 // Everything captured lives in IndexedDB first, so nothing is lost if the
@@ -30,9 +31,12 @@ export interface LocalPage {
   blob: Blob;
   width: number;
   height: number;
+  /** Straightened to the page edges. */
   cropped: boolean;
-  /** Uncropped version, so staff can undo a bad auto-crop before upload. */
+  /** The photo as taken, so staff can re-adjust the page before upload. */
   original?: { blob: Blob; width: number; height: number };
+  /** Corners, rotation and scan/photo choice used to make `blob` from `original`. */
+  edits?: PageEdits;
 }
 
 interface CCSchema extends DBSchema {

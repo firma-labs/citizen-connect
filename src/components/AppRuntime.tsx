@@ -89,17 +89,5 @@ export function AppRuntime() {
       </div>
     );
   }
-  if (env.iosStandalone) {
-    return (
-      <div className="border-b border-rule bg-surface p-3">
-        <Notice tone="attention">
-          <p>{t("env.ios")}</p>
-          <Button variant="secondary" className="mt-3" onClick={() => setDismissed(true)}>
-            {t("env.ok")}
-          </Button>
-        </Notice>
-      </div>
-    );
-  }
   return null;
 }

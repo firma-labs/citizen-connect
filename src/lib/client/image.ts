@@ -1,180 +1,246 @@
 "use client";
 
-// Client-side page processing: honour EXIF rotation, crop to the paper's edges
-// (PRD §5 "edges cropped automatically"), and downscale/compress so a page is
-// a few hundred KB — small enough to queue offline and upload on weak signal,
-// still sharp enough for handwriting.
+// Turns a phone photo of a letter into a clean, straight page — like a
+// document scanner app — using two libraries:
+//
+//   scanic     finds the page's four corners and straightens it (perspective
+//              correction), and provides the drag-the-corners editor.
+//   OpenCV.js  removes shadows and uneven light and whitens the paper
+//              (background division: dilate + median blur → divide).
+//
+// Everything runs on the phone, so scanning works offline. The photo itself is
+// kept on the device so staff can re-adjust corners, rotate, or switch between
+// "scan" and "photo" until the token is issued.
 
+import type { CornerPoints } from "scanic";
+
+/** Long edge of the page that is stored and read by the AI. */
 const MAX_EDGE = 2200;
-const QUALITY = 0.82;
+/** Long edge of the photo kept on the device for re-editing. */
+const ORIGINAL_EDGE = 3000;
+const QUALITY = 0.85;
+/** Served from public/vendor (copied from @techstark/opencv-js by scripts/copy-vendor.mjs). Keep the version in step with package.json. */
+const OPENCV_URL = "/vendor/opencv-4.12.0.js";
+
+export type Corners = CornerPoints;
+export type Rotation = 0 | 90 | 180 | 270;
+
+export interface PageEdits {
+  /** Page corners in the original photo's pixels; null = use the whole photo. */
+  corners: Corners | null;
+  /** What automatic detection found (null = no page edges found). */
+  detected: Corners | null;
+  rotation: Rotation;
+  /** Remove shadows and whiten the paper ("scan"); false keeps the photo's colours ("photo"). */
+  clean: boolean;
+}
 
 export interface ProcessedPage {
   blob: Blob;
   width: number;
   height: number;
+  /** True when the page was straightened to its edges. */
   cropped: boolean;
-  /** Uncropped version, kept on the device so staff can undo a bad auto-crop. */
+  /** The photo as taken, kept on the device for re-editing. */
   original?: { blob: Blob; width: number; height: number };
+  edits?: PageEdits;
 }
 
+// ---------------------------------------------------------------- libraries
+
+let scanicP: Promise<typeof import("scanic")> | null = null;
+const loadScanic = () => (scanicP ??= import("scanic"));
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenCV.js ships no usable types
+type CV = any;
+let cvP: Promise<{ cv: CV }> | null = null;
+/** Load OpenCV.js once (cached by the service worker for offline use). Resolves with a wrapper: the module object is thenable. */
+function loadOpenCv(): Promise<{ cv: CV }> {
+  cvP ??= new Promise<{ cv: CV }>((resolve, reject) => {
+    const w = window as unknown as { cv?: CV };
+    const ready = () => {
+      const m = w.cv;
+      if (!m) return reject(new Error("OpenCV.js did not load"));
+      if (typeof m.Mat === "function") return resolve({ cv: m });
+      if (m instanceof Promise) return void m.then((cv: CV) => resolve({ cv }), reject);
+      m.onRuntimeInitialized = () => resolve({ cv: w.cv });
+    };
+    if (w.cv) return ready();
+    const s = document.createElement("script");
+    s.src = OPENCV_URL;
+    s.async = true;
+    s.onload = ready;
+    s.onerror = () => reject(new Error("OpenCV.js failed to download"));
+    document.head.appendChild(s);
+  }).catch((e) => {
+    cvP = null; // allow a retry later (e.g. once back online)
+    throw e;
+  });
+  return cvP;
+}
+
+/** Start downloading the scanner libraries in the background (call when the capture screen opens). */
+export function warmUpScanner() {
+  const go = () => {
+    loadScanic().catch(() => {});
+    loadOpenCv().catch(() => {});
+  };
+  if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 3000 });
+  else setTimeout(go, 500);
+}
+
+// ---------------------------------------------------------------- pipeline
+
+/** Photo from the camera or gallery → straightened, cleaned page. */
 export async function processPhoto(source: Blob, opts: { autoCrop: boolean }): Promise<ProcessedPage> {
   const bitmap = await createImageBitmap(source, { imageOrientation: "from-image" });
+  let photo: HTMLCanvasElement;
   try {
-    const box = opts.autoCrop ? detectPaper(bitmap) : null;
-    const full = await render(bitmap, { x: 0, y: 0, w: bitmap.width, h: bitmap.height });
-    if (!box) return { ...full, cropped: false };
-    const cropped = await render(bitmap, box);
-    return { ...cropped, cropped: true, original: full };
+    photo = scaled(bitmap, bitmap.width, bitmap.height, ORIGINAL_EDGE);
   } finally {
     bitmap.close();
   }
+  const original = { blob: await toJpeg(photo, 0.9), width: photo.width, height: photo.height };
+  const detected = await detectCorners(photo);
+  const edits: PageEdits = { corners: opts.autoCrop ? detected : null, detected, rotation: 0, clean: opts.autoCrop };
+  return { ...(await render(photo, edits)), original, edits };
 }
 
-async function render(bitmap: ImageBitmap, b: { x: number; y: number; w: number; h: number }) {
-  const scale = Math.min(1, MAX_EDGE / Math.max(b.w, b.h));
-  const w = Math.round(b.w * scale);
-  const h = Math.round(b.h * scale);
-  const canvas = makeCanvas(w, h);
-  const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, b.x, b.y, b.w, b.h, 0, 0, w, h);
-  return { blob: await toJpeg(canvas), width: w, height: h };
+/** Re-render a page after staff change its corners, rotation or scan/photo choice. */
+export async function reprocessPage(page: ProcessedPage, edits: PageEdits): Promise<ProcessedPage> {
+  if (!page.original) throw new Error("the original photo is not on this device");
+  const photo = await decode(page.original.blob);
+  return { ...(await render(photo, edits)), original: page.original, edits };
 }
 
-export async function processVideoFrame(video: HTMLVideoElement, opts: { autoCrop: boolean }): Promise<ProcessedPage> {
-  const c = makeCanvas(video.videoWidth, video.videoHeight);
-  (c.getContext("2d") as CanvasRenderingContext2D).drawImage(video, 0, 0);
-  return processPhoto(await toJpeg(c, 0.95), opts);
+/** Decode a blob into an <img> (for the corner editor). */
+export async function blobToImage(blob: Blob): Promise<HTMLImageElement> {
+  const img = new Image();
+  img.src = URL.createObjectURL(blob);
+  try {
+    await img.decode();
+  } finally {
+    URL.revokeObjectURL(img.src);
+  }
+  return img;
 }
 
-function makeCanvas(w: number, h: number): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  return c;
+async function detectCorners(photo: HTMLCanvasElement): Promise<Corners | null> {
+  try {
+    const { scanDocument } = await loadScanic();
+    // 0.8: on test photos, real page edges scored 0.87–0.98, while a photo of a
+    // screen gave a wrong, slanted quad at 0.68. Below it the whole photo is kept
+    // (still cleaned) and the page is flagged "Check edges" for staff to drag.
+    const r = await scanDocument(photo, { mode: "detect", maxProcessingDimension: 1000, minDetectionConfidence: 0.8 });
+    return r.success && r.isValid !== false && r.corners ? r.corners : null;
+  } catch (e) {
+    console.warn("page edge detection failed", e);
+    return null;
+  }
 }
 
-function toJpeg(canvas: HTMLCanvasElement, q = QUALITY): Promise<Blob> {
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("could not encode image"))), "image/jpeg", q),
-  );
+async function render(photo: HTMLCanvasElement, edits: PageEdits) {
+  let page = photo;
+  let straightened = false;
+  if (edits.corners) {
+    try {
+      const { extractDocument } = await loadScanic();
+      const r = await extractDocument(photo, edits.corners, { output: "canvas" });
+      if (r.success && r.output instanceof HTMLCanvasElement) {
+        page = r.output;
+        straightened = true;
+      }
+    } catch (e) {
+      console.warn("straightening failed; keeping the whole photo", e);
+    }
+  }
+  page = scaled(page, page.width, page.height, MAX_EDGE);
+  if (edits.clean) page = await removeShadows(page);
+  if (edits.rotation) page = rotated(page, edits.rotation);
+  return { blob: await toJpeg(page, QUALITY), width: page.width, height: page.height, cropped: straightened };
 }
 
 /**
- * Find the sheet of paper: paper is the large bright region against a darker
- * table/cloth. Works on a 256px thumbnail with an Otsu threshold and row/column
- * projections. Returns null (keep the full photo) when unsure — a missed crop
- * costs nothing, a wrong crop could cut off a signature or mobile number.
+ * Shadow removal / paper whitening with OpenCV: estimate the paper's
+ * brightness everywhere (dilate removes the ink, median blur smooths it —
+ * done at quarter size for speed), then divide the page by it, so the paper
+ * becomes white and ink stays dark, in colour. If OpenCV can't load (first
+ * use with no signal), the page is kept as is.
  */
-function detectPaper(bitmap: ImageBitmap): { x: number; y: number; w: number; h: number } | null {
-  const S = 256;
-  const k = S / Math.max(bitmap.width, bitmap.height);
-  const tw = Math.max(16, Math.round(bitmap.width * k));
-  const th = Math.max(16, Math.round(bitmap.height * k));
-  const c = makeCanvas(tw, th);
-  const ctx = c.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D;
-  ctx.drawImage(bitmap, 0, 0, tw, th);
-  const { data } = ctx.getImageData(0, 0, tw, th);
-
-  const lum = new Uint8Array(tw * th);
-  const hist = new Array(256).fill(0);
-  for (let i = 0; i < tw * th; i++) {
-    const v = (data[i * 4] * 299 + data[i * 4 + 1] * 587 + data[i * 4 + 2] * 114) / 1000;
-    lum[i] = v;
-    hist[lum[i]]++;
+async function removeShadows(canvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+  let cv: CV;
+  try {
+    ({ cv } = await loadOpenCv());
+  } catch (e) {
+    console.warn("OpenCV.js unavailable; page not cleaned", e);
+    return canvas;
   }
-
-  // Otsu threshold
-  const total = tw * th;
-  let sum = 0;
-  for (let i = 0; i < 256; i++) sum += i * hist[i];
-  let sumB = 0, wB = 0, best = 0, thresh = 128, mB = 0, mF = 0;
-  for (let t = 0; t < 256; t++) {
-    wB += hist[t];
-    if (!wB) continue;
-    const wF = total - wB;
-    if (!wF) break;
-    sumB += t * hist[t];
-    const mb = sumB / wB;
-    const mf = (sum - sumB) / wF;
-    const between = wB * wF * (mb - mf) ** 2;
-    if (between > best) {
-      best = between;
-      thresh = t;
-      mB = mb;
-      mF = mf;
-    }
+  const mats: { delete(): void }[] = [];
+  const keep = <T extends { delete(): void }>(m: T) => (mats.push(m), m);
+  try {
+    const rgba = keep(cv.imread(canvas));
+    const rgb = keep(new cv.Mat());
+    cv.cvtColor(rgba, rgb, cv.COLOR_RGBA2RGB);
+    const small = keep(new cv.Mat());
+    cv.resize(rgb, small, new cv.Size(0, 0), 0.25, 0.25, cv.INTER_AREA);
+    const kernel = keep(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(7, 7)));
+    const dilated = keep(new cv.Mat());
+    cv.dilate(small, dilated, kernel);
+    const blurred = keep(new cv.Mat());
+    cv.medianBlur(dilated, blurred, 21);
+    const background = keep(new cv.Mat());
+    cv.resize(blurred, background, rgb.size(), 0, 0, cv.INTER_LINEAR);
+    const flat = keep(new cv.Mat());
+    cv.divide(rgb, background, flat, 255);
+    const out = keep(new cv.Mat());
+    flat.convertTo(out, -1, 1.15, -38); // a little more contrast: darker ink, paper stays white
+    const result = document.createElement("canvas");
+    cv.imshow(result, out);
+    return result;
+  } catch (e) {
+    console.warn("page clean-up failed; keeping the page as is", e);
+    return canvas;
+  } finally {
+    mats.forEach((m) => m.delete());
   }
-  if (mF - mB < 45) return null; // not enough contrast between paper and background
-
-  const rowFrac = new Float32Array(th);
-  for (let y = 0; y < th; y++) {
-    let n = 0;
-    for (let x = 0; x < tw; x++) if (lum[y * tw + x] > thresh) n++;
-    rowFrac[y] = n / tw;
-  }
-  const span = outerSpan(rowFrac, 0.3);
-  if (!span) return null;
-  let [top, bottom] = span;
-
-  const colFrac = new Float32Array(tw);
-  const rh = bottom - top + 1;
-  for (let x = 0; x < tw; x++) {
-    let n = 0;
-    for (let y = top; y <= bottom; y++) if (lum[y * tw + x] > thresh) n++;
-    colFrac[x] = n / rh;
-  }
-  const cspan = outerSpan(colFrac, 0.3);
-  if (!cspan) return null;
-  let [left, right] = cspan;
-
-  // Trim a side only where there is a real paper edge: a sharp brightness step
-  // from a darker background strip to the paper. Uneven light (a phone's shadow,
-  // a screen photographed at an angle) dims the paper gradually and has no step,
-  // so that side is left alone. Getting this wrong cut off the signature and
-  // mobile number at the bottom of a letter.
-  const mean = (x0: number, x1: number, y0: number, y1: number) => {
-    x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(tw - 1, x1); y1 = Math.min(th - 1, y1);
-    if (x1 < x0 || y1 < y0) return NaN;
-    let s = 0, n = 0;
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { s += lum[y * tw + x]; n++; }
-    return s / n;
-  };
-  const paper = mean(left, right, top, bottom);
-  const kv = Math.max(2, Math.round(th * 0.03));
-  const kh = Math.max(2, Math.round(tw * 0.03));
-  const isEdge = (inside: number, outside: number, strip: number) =>
-    !Number.isNaN(outside) && inside - outside > 40 && strip < paper * 0.65;
-
-  if (top > 0 && !isEdge(mean(left, right, top, top + kv - 1), mean(left, right, top - kv, top - 1), mean(left, right, 0, top - 1))) top = 0;
-  if (bottom < th - 1 && !isEdge(mean(left, right, bottom - kv + 1, bottom), mean(left, right, bottom + 1, bottom + kv), mean(left, right, bottom + 1, th - 1))) bottom = th - 1;
-  if (left > 0 && !isEdge(mean(left, left + kh - 1, top, bottom), mean(left - kh, left - 1, top, bottom), mean(0, left - 1, top, bottom))) left = 0;
-  if (right < tw - 1 && !isEdge(mean(right - kh + 1, right, top, bottom), mean(right + 1, right + kh, top, bottom), mean(right + 1, tw - 1, top, bottom))) right = tw - 1;
-
-  const area = ((right - left + 1) * (bottom - top + 1)) / total;
-  if (area < 0.2 || area > 0.92) return null; // nothing worth cropping, or implausible
-
-  const m = 0.015; // margin so edge text is never cut
-  const x0 = Math.max(0, left / tw - m);
-  const x1 = Math.min(1, (right + 1) / tw + m);
-  const y0 = Math.max(0, top / th - m);
-  const y1 = Math.min(1, (bottom + 1) / th + m);
-  return {
-    x: Math.round(x0 * bitmap.width),
-    y: Math.round(y0 * bitmap.height),
-    w: Math.round((x1 - x0) * bitmap.width),
-    h: Math.round((y1 - y0) * bitmap.height),
-  };
 }
 
-function outerSpan(arr: Float32Array, min: number): [number, number] | null {
-  let first = -1;
-  let last = -1;
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] >= min) {
-      if (first < 0) first = i;
-      last = i;
-    }
+// ---------------------------------------------------------------- canvas helpers
+
+function scaled(src: CanvasImageSource, w: number, h: number, maxEdge: number): HTMLCanvasElement {
+  const k = Math.min(1, maxEdge / Math.max(w, h));
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * k);
+  c.height = Math.round(h * k);
+  const ctx = c.getContext("2d") as CanvasRenderingContext2D;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+
+function rotated(src: HTMLCanvasElement, deg: Rotation): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  const quarter = deg === 90 || deg === 270;
+  c.width = quarter ? src.height : src.width;
+  c.height = quarter ? src.width : src.height;
+  const ctx = c.getContext("2d") as CanvasRenderingContext2D;
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate((deg * Math.PI) / 180);
+  ctx.drawImage(src, -src.width / 2, -src.height / 2);
+  return c;
+}
+
+async function decode(blob: Blob): Promise<HTMLCanvasElement> {
+  const bmp = await createImageBitmap(blob);
+  try {
+    return scaled(bmp, bmp.width, bmp.height, ORIGINAL_EDGE);
+  } finally {
+    bmp.close();
   }
-  return first >= 0 && last - first >= arr.length * 0.25 ? [first, last] : null;
+}
+
+function toJpeg(canvas: HTMLCanvasElement, q: number): Promise<Blob> {
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("could not encode image"))), "image/jpeg", q),
+  );
 }
