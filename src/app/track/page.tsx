@@ -3,17 +3,20 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { AppBar, Screen } from "@/components/ui/AppBar";
+import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Field, inputClass } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { useIsStaff } from "@/lib/client/session";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { dept, refLabel } from "@/lib/reference";
 
 // Public, citizen-facing status check (PRD §4.1 #8). Language menu top-right.
 
 export default function TrackPage() {
+  // Citizens see a plain public page; staff (signed in) keep their tab bar to get back.
+  const staff = useIsStaff();
   return (
     <>
       <AppBar publicPage />
@@ -22,6 +25,7 @@ export default function TrackPage() {
           <Track />
         </Suspense>
       </Screen>
+      {staff && <BottomNav />}
     </>
   );
 }

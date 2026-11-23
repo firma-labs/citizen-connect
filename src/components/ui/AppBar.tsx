@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { listApps, subscribe } from "@/lib/client/db";
+import { officeSummary, useOfficeApplications } from "@/lib/client/office";
+import { useIsStaff } from "@/lib/client/session";
 import { onSyncState } from "@/lib/client/sync";
 import { LOCALES, useI18n, type MessageKey } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
@@ -13,8 +15,11 @@ import { Icon, type IconName } from "./Icon";
  * (top-right for left-to-right scripts, per USWDS / DWP language guidance).
  * On wide screens it also carries the main navigation.
  */
-export function AppBar({ title, back, publicPage }: { title?: MessageKey; back?: string; publicPage?: boolean }) {
+export function AppBar({ title, back, publicPage: publicOnly }: { title?: MessageKey; back?: string; publicPage?: boolean }) {
   const { t } = useI18n();
+  // Public pages (citizen status) still give staff their navigation.
+  const staff = useIsStaff();
+  const publicPage = publicOnly && !staff;
   return (
     <header className="sticky top-0 z-20 border-b border-rule bg-surface/90 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center gap-2.5 px-3 sm:px-4">
@@ -85,15 +90,9 @@ function DesktopNav() {
 export function BottomNav() {
   const { t } = useI18n();
   const path = usePathname();
-  const [toCheck, setToCheck] = useState(0);
-  useEffect(() => {
-    const refresh = () =>
-      listApps()
-        .then((a) => setToCheck(a.filter((x) => x.server_status === "read" || x.server_status === "read_failed").length))
-        .catch(() => {});
-    refresh();
-    return subscribe(refresh);
-  }, []);
+  // Same office-wide number as the Home and Queue tiles.
+  const { local, server } = useOfficeApplications();
+  const toCheck = officeSummary(local, server).toCheck;
   return (
     <nav
       aria-label="Main"

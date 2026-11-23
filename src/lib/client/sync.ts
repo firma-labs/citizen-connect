@@ -7,6 +7,24 @@ import { deleteApp, getPage, listApps, patchApp, prunePages, type LocalApplicati
 // server, so a retry after a dropped connection or a killed tab is safe.
 
 const POLL_MS = 15_000;
+/**
+ * Time limits, so a weak or half-dead connection can't leave a request (and
+ * every scan queued behind it) hanging for minutes. Page uploads get longer: a
+ * ~1 MB page on a slow 3G link takes well under two minutes. A timed-out step
+ * is safe to repeat; the next pass (15 s later) picks up where it stopped.
+ */
+export const REQUEST_TIMEOUT_MS = 30_000;
+export const UPLOAD_TIMEOUT_MS = 120_000;
+/** Error message used for a timed-out request; screens show it in the user's language. */
+export const SYNC_TIMEOUT = "sync_timeout";
+
+/** AbortSignal that fires after `ms` (AbortSignal.timeout where available). */
+export function timeoutSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  const c = new AbortController();
+  setTimeout(() => c.abort(new DOMException("timed out", "TimeoutError")), ms);
+  return c.signal;
+}
 let running = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 let started = false;
@@ -70,7 +88,9 @@ export async function syncNow(): Promise<void> {
         }
         lastError = (e as Error).message;
         await patchApp(app.token, { last_error: lastError });
-        if (!navigator.onLine) break;
+        // Offline, or the signal is too weak to finish a request: stop this pass
+        // rather than wait out the same timeout for every scan; retry in 15 s.
+        if (!navigator.onLine || lastError === SYNC_TIMEOUT) break;
       }
     }
   } finally {
@@ -81,8 +101,14 @@ export async function syncNow(): Promise<void> {
 
 type HttpError = Error & { status?: number };
 
-async function call(url: string, init?: RequestInit) {
-  const res = await fetch(url, { ...init, cache: "no-store" });
+async function call(url: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, cache: "no-store", signal: timeoutSignal(timeoutMs) });
+  } catch (e) {
+    if ((e as DOMException).name === "TimeoutError" || (e as DOMException).name === "AbortError") throw new Error(SYNC_TIMEOUT);
+    throw e;
+  }
   if (res.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
     // Signed out or session expired. Queued scans stay in IndexedDB and upload after sign-in.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- outside React; a full load restarts sync signed in
@@ -116,11 +142,11 @@ async function syncOne(app: LocalApplication) {
     if (app.pages_uploaded.includes(i)) continue;
     const page = await getPage(app.token, i);
     if (!page) throw new Error(`page ${i + 1} missing on this device`);
-    const r = await call(`${base}/pages/${i}`, {
-      method: "PUT",
-      headers: { "Content-Type": page.blob.type || "image/jpeg" },
-      body: page.blob,
-    });
+    const r = await call(
+      `${base}/pages/${i}`,
+      { method: "PUT", headers: { "Content-Type": page.blob.type || "image/jpeg" }, body: page.blob },
+      UPLOAD_TIMEOUT_MS,
+    );
     app = { ...app, pages_uploaded: r.pages_received ?? [...app.pages_uploaded, i] };
     await patchApp(app.token, { pages_uploaded: app.pages_uploaded });
   }

@@ -10,7 +10,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { StatusTag } from "@/components/ui/StatusTag";
 import { deleteApp } from "@/lib/client/db";
 import { localStatus, officeSummary, useOfficeApplications } from "@/lib/client/office";
-import { onSyncState, requestRead, syncNow } from "@/lib/client/sync";
+import { SYNC_TIMEOUT, onSyncState, requestRead, syncNow } from "@/lib/client/sync";
 import { useI18n } from "@/lib/i18n";
 import { dept, refLabel } from "@/lib/reference";
 
@@ -25,6 +25,8 @@ export default function QueuePage() {
 
   const office = officeSummary(allLocal, server);
   const { byToken, others, local, archived } = office;
+  /** Sync errors in the user's language (a timeout is the common one on weak signal). */
+  const syncError = (e: string | null | undefined) => (e === SYNC_TIMEOUT ? t("queue.timeout") : e);
   /** A scan that never reached the server can only be removed from this phone. */
   const deleteLocal = (token: string) => {
     if (confirm(t("queue.deleteLocalConfirm"))) void deleteApp(token);
@@ -59,8 +61,8 @@ export default function QueuePage() {
           </Notice>
         )}
         {sync.lastError && sync.online && (
-          <Notice tone="error" className="mb-5">
-            {sync.lastError}
+          <Notice tone={sync.lastError === SYNC_TIMEOUT ? "attention" : "error"} className="mb-5">
+            {syncError(sync.lastError)}
           </Notice>
         )}
 
@@ -83,9 +85,9 @@ export default function QueuePage() {
                   pages={a.page_count}
                   detail={
                     a.state === "queued"
-                      ? t("queue.uploaded", { a: a.pages_uploaded.length, b: a.page_count }) + (a.last_error ? ` — ${a.last_error}` : "")
+                      ? t("queue.uploaded", { a: a.pages_uploaded.length, b: a.page_count }) + (a.last_error ? ` — ${syncError(a.last_error)}` : "")
                       : status === "read_failed"
-                        ? (s?.read_error ?? a.last_error ?? undefined)
+                        ? (s?.read_error ?? syncError(a.last_error) ?? undefined)
                         : (s?.summary_en ?? undefined)
                   }
                   deptCode={s?.verified?.department}

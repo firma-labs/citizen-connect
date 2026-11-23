@@ -4,7 +4,7 @@
 // what this phone has not uploaded yet. Home and Queue both count from here,
 // so their numbers always agree.
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { listApps, subscribe, type LocalApplication } from "./db";
 import type { ArchiveRecord } from "@/lib/types";
 import { onSyncState } from "./sync";
@@ -41,39 +41,64 @@ function writeCache(rows: ServerRow[]) {
   } catch {}
 }
 
+// One shared poller for the whole app: every screen and the bottom tab bar
+// read the same server list instead of each fetching its own.
+let serverRows: ServerRow[] | null = null;
+const listeners = new Set<() => void>();
+let stopPolling: (() => void) | null = null;
+let lastLoad = 0;
+
+function loadServer() {
+  lastLoad = Date.now();
+  fetch("/api/applications", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((d) => {
+      serverRows = d.applications;
+      writeCache(d.applications);
+    })
+    // Offline or failed: keep showing the last list rather than nothing.
+    .catch(() => {
+      serverRows ??= readCache();
+    })
+    .finally(() => listeners.forEach((l) => l()));
+}
+
+function startPolling(pollMs: number) {
+  const timer = setInterval(loadServer, pollMs);
+  const off = onSyncState((s) => {
+    if (!s.running) loadServer(); // an upload just finished
+  });
+  return () => {
+    clearInterval(timer);
+    off();
+  };
+}
+
 /** This phone's applications (drafts excluded) and the server's list, kept fresh. */
 export function useOfficeApplications(pollMs = 10_000) {
   const [local, setLocal] = useState<LocalApplication[]>([]);
   const [server, setServer] = useState<ServerRow[] | null>(null);
 
-  const loadServer = useCallback(() => {
-    fetch("/api/applications", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => {
-        writeCache(d.applications);
-        setServer(d.applications);
-      })
-      // Offline or failed: keep showing the last list rather than nothing.
-      .catch(() => setServer((cur) => cur ?? readCache()));
-  }, []);
-
   useEffect(() => {
     const refresh = () => listApps().then((a) => setLocal(a.filter((x) => x.state !== "draft")));
     void refresh();
-    // Show the cached list at once (after hydration, so server and client HTML match), then refresh.
-    void Promise.resolve().then(() => setServer((cur) => cur ?? readCache()));
-    loadServer();
     const unsub = subscribe(() => void refresh());
-    const off = onSyncState((s) => {
-      if (!s.running) loadServer(); // an upload just finished
-    });
-    const timer = setInterval(loadServer, pollMs);
+
+    const update = () => setServer(serverRows);
+    listeners.add(update);
+    // Show what is known at once (after hydration, so server and client HTML match), then refresh.
+    void Promise.resolve().then(() => setServer(serverRows ?? readCache()));
+    if (listeners.size === 1) stopPolling = startPolling(pollMs);
+    if (Date.now() - lastLoad > 2_000) loadServer(); // several screens mounting together share one request
     return () => {
       unsub();
-      off();
-      clearInterval(timer);
+      listeners.delete(update);
+      if (listeners.size === 0) {
+        stopPolling?.();
+        stopPolling = null;
+      }
     };
-  }, [loadServer, pollMs]);
+  }, [pollMs]);
 
   return { local, server, reload: loadServer };
 }

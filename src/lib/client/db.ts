@@ -101,8 +101,29 @@ export async function getPage(token: string, idx: number) {
   return (await db()).get("pages", pageKey(token, idx));
 }
 
+/** A copy of a blob held in memory, independent of where it was read from. */
+async function ownCopy(blob: Blob): Promise<Blob> {
+  try {
+    return new Blob([await blob.arrayBuffer()], { type: blob.type });
+  } catch {
+    return blob; // already unreadable (lost before this fix): keep it so staff can delete or retake that page
+  }
+}
+
 /** Replace the full page list for a draft (used after add/remove/reorder). */
 export async function setPages(token: string, pages: Omit<LocalPage, "key" | "idx" | "token">[]) {
+  // Safari/iOS: a blob read from IndexedDB is a reference to the stored record,
+  // not a copy. Deleting the old records below would leave those references
+  // empty (the first page showed as a broken image after adding a second).
+  // Copy every image into memory first — outside the transaction, since
+  // awaiting anything but IndexedDB inside it would end the transaction.
+  pages = await Promise.all(
+    pages.map(async (p) => ({
+      ...p,
+      blob: await ownCopy(p.blob),
+      original: p.original ? { ...p.original, blob: await ownCopy(p.original.blob) } : undefined,
+    })),
+  );
   const d = await db();
   const tx = d.transaction(["pages", "applications"], "readwrite");
   const existing = await tx.objectStore("pages").index("by_token").getAllKeys(token);

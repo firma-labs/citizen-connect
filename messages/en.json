@@ -106,6 +106,7 @@
     "empty": "Nothing scanned on this phone yet.",
     "syncNow": "Sync now",
     "offline": "Offline. Scans are saved and upload when the signal returns.",
+    "timeout": "The signal is too weak to finish uploading. It will try again automatically.",
     "uploading": "Syncing…",
     "pendingBadge": "{n, plural, one {# scan waiting to upload} other {# scans waiting to upload}}",
     "uploaded": "{a} of {b} pages uploaded",
@@ -226,7 +227,8 @@
     "starting": "Starting…",
     "uploading": "Uploading page {a} of {b}…",
     "reading": "Starting the reading…",
-    "error": "{msg}. Nothing is lost — try again."
+    "error": "{msg}. Nothing is lost — try again.",
+    "timeout": "The signal is too weak to finish"
   },
   "track": {
     "title": "Application status",

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { processPhoto, warmUpScanner, type ProcessedPage } from "@/lib/client/image";
+import { REQUEST_TIMEOUT_MS, UPLOAD_TIMEOUT_MS, timeoutSignal } from "@/lib/client/sync";
 import { useSettings } from "@/lib/client/settings";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "./ui/Button";
@@ -115,8 +116,10 @@ export function RescanPanel({
     setBusy(true);
     setError(null);
     const base = `/api/applications/${encodeURIComponent(token)}`;
-    const call = async (url: string, init: RequestInit) => {
-      const r = await fetch(url, init);
+    const call = async (url: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) => {
+      const r = await fetch(url, { ...init, signal: timeoutSignal(timeoutMs) }).catch((e: DOMException) => {
+        throw e.name === "TimeoutError" || e.name === "AbortError" ? new Error(t("rescan.timeout")) : e;
+      });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body.error ?? `${r.status} ${r.statusText}`);
       return body;
@@ -130,7 +133,7 @@ export function RescanPanel({
       });
       for (let i = 0; i < pages.length; i++) {
         setProgress(t("rescan.uploading", { a: i + 1, b: pages.length }));
-        await call(`${base}/pages/${i}`, { method: "PUT", headers: { "Content-Type": pages[i].blob.type || "image/jpeg" }, body: pages[i].blob });
+        await call(`${base}/pages/${i}`, { method: "PUT", headers: { "Content-Type": pages[i].blob.type || "image/jpeg" }, body: pages[i].blob }, UPLOAD_TIMEOUT_MS);
       }
       setProgress(t("rescan.reading"));
       await call(`${base}/read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
