@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LiveCamera } from "@/components/LiveCamera";
-import { AppBar, Screen } from "@/components/ui/AppBar";
+import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
@@ -178,7 +178,7 @@ export default function CapturePage() {
   if (issued) {
     return (
       <>
-        <AppBar title="token.title" back="/" />
+        <AppBar title="token.title" />
         <Screen>
           <div className="rounded-[28px] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4 sm:p-6">
             <TokenCard token={issued.token} pages={issued.pages} issuedAt={issued.at} />
@@ -193,6 +193,7 @@ export default function CapturePage() {
             </Button>
           </div>
         </Screen>
+        <BottomNav />
       </>
     );
   }
@@ -201,7 +202,7 @@ export default function CapturePage() {
 
   return (
     <>
-      <AppBar title="capture.title" back="/" />
+      <AppBar title="capture.title" />
       <Screen>
         {/* Default path (PRD §6): the phone's own camera app — full resolution, no permission prompt. */}
         <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFiles(e.target.files)} />
@@ -306,12 +307,12 @@ export default function CapturePage() {
             ))}
           </ol>
         )}
+        {/* room for the action bar stacked above the tab bar */}
+        <div aria-hidden className="h-24 lg:h-16" />
       </Screen>
 
-      <div
-        className="fixed inset-x-0 bottom-0 z-10 border-t border-rule bg-surface/95 px-4 pt-3 backdrop-blur"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-      >
+      {/* Issue-token bar: just above the bottom tab bar on phones, at the bottom on wide screens */}
+      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 border-t border-rule bg-surface/95 px-4 py-3 backdrop-blur-md lg:bottom-0">
         <div className="mx-auto flex max-w-2xl gap-3">
           {pages.length > 0 && (
             <Button variant="danger" size="lg" icon="trash" onClick={() => void discard()} aria-label={t("capture.discard")}>
@@ -323,6 +324,8 @@ export default function CapturePage() {
           </Button>
         </div>
       </div>
+
+      <BottomNav />
 
       {preview && (
         <div className="fixed inset-0 z-30 flex flex-col bg-ink" role="dialog" aria-modal="true" aria-label={t("capture.page", { n: preview.idx + 1 })}>
