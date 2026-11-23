@@ -11,13 +11,19 @@ const APPS = path.join(ROOT, "applications");
 const PAGES = path.join(ROOT, "pages");
 const USAGE = path.join(ROOT, "ai-usage.json");
 
-async function readUsage(): Promise<Record<string, number>> {
+/** { "2026-11-23": { "9876543210": 3, "anonymous": 1 } } */
+type Usage = Record<string, Record<string, number>>;
+async function readUsage(): Promise<Usage> {
   try {
-    return JSON.parse(await fs.readFile(USAGE, "utf8"));
+    const raw = JSON.parse(await fs.readFile(USAGE, "utf8")) as Record<string, unknown>;
+    // Older files stored one number per day; start those days fresh per user.
+    for (const k of Object.keys(raw)) if (typeof raw[k] !== "object" || raw[k] === null) delete raw[k];
+    return raw as Usage;
   } catch {
     return {};
   }
 }
+const sum = (o: Record<string, number> = {}) => Object.values(o).reduce((a, b) => a + b, 0);
 
 const safe = (token: string) => token.replace(/[^A-Z0-9-]/gi, "");
 const appFile = (token: string) => path.join(APPS, `${safe(token)}.json`);
@@ -86,18 +92,21 @@ export const localStore: Store = {
     await fs.writeFile(file, page.bytes);
     await fs.writeFile(`${file}.type`, page.contentType);
   },
-  takeAiRead: (day, limit) =>
+  takeAiRead: (day, user, userLimit, totalLimit) =>
     withLock("__ai-usage__", async () => {
       const usage = await readUsage();
-      const used = usage[day] ?? 0;
-      if (used >= limit) return null;
-      usage[day] = used + 1;
+      const today = (usage[day] ??= {});
+      if (totalLimit > 0 && sum(today) >= totalLimit) return { ok: false, reason: "total" } as const;
+      const used = today[user] ?? 0;
+      if (used >= userLimit) return { ok: false, reason: "user" } as const;
+      today[user] = used + 1;
       await fs.mkdir(ROOT, { recursive: true });
       await fs.writeFile(USAGE, JSON.stringify(usage, null, 2));
-      return used + 1;
+      return { ok: true, used: used + 1 } as const;
     }),
-  async aiReadsOn(day) {
-    return (await readUsage())[day] ?? 0;
+  async aiReadsOn(day, user) {
+    const today = (await readUsage())[day] ?? {};
+    return { user: today[user] ?? 0, total: sum(today) };
   },
   async getPage(token, idx): Promise<PageBlob | null> {
     const file = pageFile(token, idx);

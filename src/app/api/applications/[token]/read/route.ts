@@ -1,6 +1,8 @@
 import { after } from "next/server";
 import { claimRead, runRead } from "@/lib/server/pipeline";
 import { getStore } from "@/lib/server/store";
+import { sessionFromRequest } from "@/lib/server/auth";
+import { ANONYMOUS } from "@/lib/server/quota";
 import { errorJson, json, parseToken } from "@/lib/server/http";
 
 // AI reading runs after the response is sent; the device polls for the result.
@@ -14,7 +16,9 @@ export async function POST(req: Request, ctx: RouteContext<"/api/applications/[t
   if (!app) return errorJson(404, "not found");
 
   const claimed = await claimRead(token, !!body.force);
-  if (claimed) after(() => runRead(token));
+  // The reading counts against whoever started it (their own daily AI allowance).
+  const user = sessionFromRequest(req)?.mobile ?? ANONYMOUS;
+  if (claimed) after(() => runRead(token, user));
   const current = await getStore().get(token);
   return json({ started: claimed, status: current?.status }, claimed ? 202 : 200);
 }

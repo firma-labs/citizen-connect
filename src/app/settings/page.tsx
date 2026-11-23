@@ -15,7 +15,7 @@ export default function SettingsPage() {
   const { t, hint, locale, setLocale } = useI18n();
   const [staff, setStaff] = useState("");
   const [savedName, setSavedName] = useState(false);
-  const [health, setHealth] = useState<{ store: string; reader: string; reasoner: string; sms: string; ai_today?: { used: number; limit: number } } | null | undefined>(undefined);
+  const [health, setHealth] = useState<{ store: string; reader: string; reasoner: string; sms: string; ai_today?: { user: number; userLimit: number; total: number; totalLimit: number } } | null | undefined>(undefined);
   const [me, setMe] = useState<{ mode: string; signedIn: boolean; mobile: string | null; name: string | null } | null>(null);
 
   useEffect(() => {
@@ -123,7 +123,11 @@ export default function SettingsPage() {
                   ["settings.reader", health?.reader],
                   ["settings.reasoner", health?.reasoner],
                   ["settings.sms", health?.sms],
-                  ["settings.aiToday", health?.ai_today ? `${health.ai_today.used} / ${health.ai_today.limit}` : undefined],
+                  ["settings.aiToday", health?.ai_today ? `${health.ai_today.user} / ${health.ai_today.userLimit}` : undefined],
+                  [
+                    "settings.aiTotal",
+                    health?.ai_today ? `${health.ai_today.total}${health.ai_today.totalLimit ? ` / ${health.ai_today.totalLimit}` : ""}` : undefined,
+                  ],
                 ] as [MessageKey, string | undefined][]
               ).map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-4 px-4 py-3">

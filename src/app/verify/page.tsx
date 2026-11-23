@@ -328,16 +328,25 @@ function Verify() {
 
             {!rescanning && status === "read_failed" && !form && (
               <Notice
-                tone={app?.read_error_code === "daily_limit" ? "attention" : "error"}
-                title={t(app?.read_error_code === "daily_limit" ? "verify.limit.title" : "verify.failed.title")}
+                tone={app?.read_error_code ? "attention" : "error"}
+                title={t(
+                  app?.read_error_code === "daily_limit"
+                    ? "verify.limit.title"
+                    : app?.read_error_code === "daily_limit_total"
+                      ? "verify.limitTotal.title"
+                      : "verify.failed.title",
+                )}
               >
                 <p>
-                  {app?.read_error_code === "daily_limit"
-                    ? t("verify.limit.body", { n: Number(/\((\d+)/.exec(app.read_error ?? "")?.[1] ?? 20) })
+                  {app?.read_error_code
+                    ? t(app.read_error_code === "daily_limit" ? "verify.limit.body" : "verify.limitTotal.body", {
+                        n: Number(/\((\d+)/.exec(app.read_error ?? "")?.[1] ?? 0),
+                      })
                     : app?.read_error}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {app?.read_error_code !== "daily_limit" && (
+                  {/* A colleague with readings left can retry a per-person limit; the overall limit waits for tomorrow. */}
+                  {app?.read_error_code !== "daily_limit_total" && (
                     <Button icon="refresh" onClick={() => void requestRead(token).then(load)}>
                       {t("verify.failed.retry")}
                     </Button>

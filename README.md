@@ -12,7 +12,6 @@ scan pages in the phone browser → token + QR instantly → AI reads → staff 
 ./scripts/start-dev.sh --prod          # production build + next start: fast, no on-demand compiling
                                        # or reloads — best for phone testing; restart after code changes
 ./scripts/start-dev.sh --funnel        # public URL via tailscale funnel (no login in this build)
-./scripts/start-dev.sh --supabase      # also start local Supabase in Docker (ports 553xx) as the store
 ./scripts/start-dev.sh --prod --funnel # flags combine
 ```
 
@@ -27,8 +26,26 @@ The pilot calls the **Claude API directly** with `ANTHROPIC_API_KEY`, using Clau
 explicitly via `AI_READER` / `AI_REASONER`.
 
 Override per step with `AI_READER` / `AI_REASONER` (`mock`, `anthropic:<model>`, `bedrock:<model>`) for the
-PRD §7.3 comparison runs. Store: local files in `.data/` unless Supabase env vars are set. SMS is logged only
+PRD §7.3 comparison runs. Data: JSON files in `.data/` on your machine; Vercel Blob when deployed on Vercel. SMS is logged only
 (`SMS_PROVIDER=console`) until the TRAI DLT templates are approved.
+
+## Deploy to Vercel (pilot demo, Preview)
+
+Data on Vercel lives in a **Vercel Blob** store — the same JSON-per-application layout as `.data/` locally.
+Your machine always keeps using `.data/`.
+
+1. Import `firma-labs/citizen-connect` in Vercel (framework: Next.js).
+2. **Storage → Create → Blob**: name `citizen-connect`, access **Private**, region **Mumbai (bom1)**;
+   connect it to the **Preview** environment (Vercel adds the credentials itself). CLI equivalent:
+   `vercel blob create-store citizen-connect --access private --region bom1 --environment preview`.
+3. **Settings → Environment Variables (Preview)**: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL=claude-opus-5`,
+   `DEMO_USERS`, `DEMO_PASSWORD`, `AUTH_SECRET` (e.g. `openssl rand -hex 32`); optionally
+   `AI_DAILY_LIMIT_PER_USER` (20) and `AI_DAILY_LIMIT_TOTAL` (200).
+4. **Settings → Functions → Region**: Mumbai (`bom1`), next to the Blob store.
+5. Deploy a preview (push a branch, or `vercel deploy`), sign in, then scan → read → verify → track once.
+
+Without sign-in settings the app stays locked on Vercel; without a connected Blob store, API calls return
+an error saying so. Mock or redacted letters only (PRD §9.1).
 
 ## Layout
 
@@ -37,5 +54,5 @@ PRD §7.3 comparison runs. Store: local files in `.data/` unless Supabase env va
 - `src/app/track` — public status page (token + mobile)
 - `src/lib/client` — IndexedDB offline queue, sync engine, image processing
 - `src/lib/server/ai` — `Reader` / `Reasoner` interfaces + Claude (API/Bedrock) and mock engines
-- `src/lib/server/store` — local-file and Supabase stores; `supabase/migrations` — schema
+- `src/lib/server/store` — JSON store: local files (`.data/`) or Vercel Blob (on Vercel)
 - `public/sw.js` — service worker (app shell offline)

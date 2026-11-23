@@ -3,7 +3,7 @@ import { dept } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
 import type { Application, AuditEntry, VerifiedFields } from "@/lib/types";
 import { AIError, getReader, getReasoner, type PageImage } from "./ai";
-import { AI_DAILY_LIMIT, takeAiRead } from "./quota";
+import { AI_LIMIT_PER_USER, AI_LIMIT_TOTAL, ANONYMOUS, takeAiRead } from "./quota";
 import { getSmsSender, tokenSms } from "./sms";
 import { getStore } from "./store";
 
@@ -34,8 +34,11 @@ export async function claimRead(token: string, force = false): Promise<boolean> 
   return claimed;
 }
 
-/** Run Reader then Reasoner. Caller must have claimed the read first. */
-export async function runRead(token: string): Promise<void> {
+/**
+ * Run Reader then Reasoner. Caller must have claimed the read first.
+ * `user` is who started the reading (signed-in mobile), for the per-person AI cap.
+ */
+export async function runRead(token: string, user: string = ANONYMOUS): Promise<void> {
   const store = getStore();
   let version = -1;
   try {
@@ -54,13 +57,17 @@ export async function runRead(token: string): Promise<void> {
     const reasoner = getReasoner();
 
     // Spend from today's AI allowance before any model call (the mock engine is free).
-    if ((reader.id !== "mock" || reasoner.id !== "mock") && !(await takeAiRead())) {
+    const quota = reader.id === "mock" && reasoner.id === "mock" ? null : await takeAiRead(user);
+    if (quota && !quota.ok) {
+      const total = quota.reason === "total";
       await store.update(token, (a) => {
         if ((a.pages_version ?? 0) !== version) return null;
         a.status = "read_failed";
-        a.read_error = `Daily AI limit reached (${AI_DAILY_LIMIT} readings). Enter the details by hand, or read again tomorrow.`;
-        a.read_error_code = "daily_limit";
-        a.audit.push({ at: new Date().toISOString(), by: "system", action: "ai_daily_limit_reached" });
+        a.read_error = total
+          ? `Today's overall AI limit is reached (${AI_LIMIT_TOTAL} readings). Enter the details by hand, or read again tomorrow.`
+          : `Daily AI limit reached for this person (${AI_LIMIT_PER_USER} readings). Another staff member can read it, or enter the details by hand.`;
+        a.read_error_code = total ? "daily_limit_total" : "daily_limit";
+        a.audit.push({ at: new Date().toISOString(), by: user, action: total ? "ai_daily_limit_total_reached" : "ai_daily_limit_reached" });
         return a;
       });
       return;

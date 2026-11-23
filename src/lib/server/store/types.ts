@@ -6,9 +6,11 @@ export interface PageBlob {
 }
 
 /**
- * Persistence boundary. Pilot: local files (dev) or Supabase (Vercel).
+ * Persistence boundary. Local JSON files on a developer machine; Vercel Blob on Vercel.
  * Production (PRD §9.2) swaps in RDS PostgreSQL + S3/KMS behind the same interface.
  */
+export type AiReadResult = { ok: true; used: number } | { ok: false; reason: "user" | "total" };
+
 export interface Store {
   readonly name: string;
   get(token: string): Promise<Application | null>;
@@ -20,10 +22,10 @@ export interface Store {
   putPage(token: string, idx: number, page: PageBlob): Promise<void>;
   getPage(token: string, idx: number): Promise<PageBlob | null>;
   /**
-   * Atomically take one AI reading from today's allowance. Returns the count
-   * after taking it, or null when the limit is already reached.
+   * Atomically take one AI reading for `user` on `day`, checking both the
+   * per-user and the overall daily limit (0 = no overall limit).
    */
-  takeAiRead(day: string, limit: number): Promise<number | null>;
-  /** AI readings used on a day. */
-  aiReadsOn(day: string): Promise<number>;
+  takeAiRead(day: string, user: string, userLimit: number, totalLimit: number): Promise<AiReadResult>;
+  /** AI readings used on a day: by one user, and by everyone. */
+  aiReadsOn(day: string, user: string): Promise<{ user: number; total: number }>;
 }

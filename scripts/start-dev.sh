@@ -8,7 +8,6 @@
 #                                       compiling or reloads; use for phone testing. Code changes
 #                                       need a restart of this script.
 #   ./scripts/start-dev.sh --funnel     expose on the public internet via tailscale funnel
-#   ./scripts/start-dev.sh --supabase   also start local Supabase (Docker) and use it as the store
 #   ./scripts/start-dev.sh --no-tailscale
 #
 # Flags combine, e.g. `./scripts/start-dev.sh --prod --funnel`.
@@ -18,9 +17,9 @@
 #   - `--funnel`: reachable from any phone. This pilot has no login — mock letters only.
 # HTTPS port 8443 is used so this never clobbers another project's serve/funnel on 443.
 #
-# The Next.js server runs in the foreground; Ctrl+C stops it and removes the
-# tailscale config this script added. Local Supabase keeps running (stop it with
-# `npx supabase stop`).
+# Data: JSON files in .data/ on this machine in every mode (Vercel Blob is used
+# only when deployed on Vercel). The Next.js server runs in the foreground;
+# Ctrl+C stops it and removes the tailscale config this script added.
 
 set -uo pipefail
 
@@ -28,13 +27,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_PORT="${APP_PORT:-4000}"
 TS_HTTPS_PORT="${TS_HTTPS_PORT:-8443}"
 
-USE_SUPABASE=0
 USE_FUNNEL=0
 USE_TAILSCALE=1
 PROD=0
 for arg in "$@"; do
   case "$arg" in
-    --supabase) USE_SUPABASE=1 ;;
     --funnel) USE_FUNNEL=1 ;;
     --no-tailscale) USE_TAILSCALE=0 ;;
     --prod|--production) PROD=1 ;;
@@ -73,29 +70,6 @@ log_ok "in $(pwd), node $(node -v)"
 
 if [ ! -f .env.local ] && ! grep -qE "^ANTHROPIC_API_KEY=.+" .env 2>/dev/null; then
   log_info "no ANTHROPIC_API_KEY in .env / .env.local — AI runs in mock mode, store is local files (.data/). See .env.example."
-fi
-
-# --- Stage: Supabase (optional) ------------------------------------------------
-if [ "$USE_SUPABASE" = 1 ]; then
-  log_stage "Starting local Supabase (Docker)"
-  command -v docker >/dev/null || fail_and_stop "docker not found — install Docker Desktop"
-  if ! docker info >/dev/null 2>&1; then
-    log_info "Docker daemon not running — launching Docker Desktop"
-    open -a Docker 2>/dev/null || true
-    for _ in $(seq 1 60); do docker info >/dev/null 2>&1 && break; sleep 2; done
-    docker info >/dev/null 2>&1 || fail_and_stop "Docker daemon did not start within 120s"
-  fi
-  log_ok "docker running"
-
-  # `start` is a no-op when already running and applies supabase/migrations on first start.
-  npx supabase start || fail_and_stop "npx supabase start failed"
-  SB_ENV="$(npx supabase status -o env 2>/dev/null)" || fail_and_stop "npx supabase status failed"
-  SB_URL="$(printf '%s\n' "$SB_ENV" | sed -n 's/^API_URL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p')"
-  SB_KEY="$(printf '%s\n' "$SB_ENV" | sed -n 's/^SERVICE_ROLE_KEY="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p')"
-  [ -n "$SB_URL" ] && [ -n "$SB_KEY" ] || fail_and_stop "could not read API_URL / SERVICE_ROLE_KEY from supabase status"
-  export STORE=supabase SUPABASE_URL="$SB_URL" SUPABASE_SERVICE_ROLE_KEY="$SB_KEY"
-  STUDIO_URL="$(printf '%s\n' "$SB_ENV" | sed -n 's/^STUDIO_URL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p')"
-  log_ok "supabase at $SB_URL (studio: ${STUDIO_URL:-n/a}) — store=supabase"
 fi
 
 # --- Stage: free the app port --------------------------------------------------

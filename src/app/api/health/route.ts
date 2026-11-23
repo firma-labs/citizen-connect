@@ -2,10 +2,10 @@ import { connection } from "next/server";
 import { getReader, getReasoner } from "@/lib/server/ai";
 import { getStore } from "@/lib/server/store";
 import { getSmsSender } from "@/lib/server/sms";
-import { aiUsageToday } from "@/lib/server/quota";
-import { authMode } from "@/lib/server/auth";
+import { ANONYMOUS, aiUsageToday } from "@/lib/server/quota";
+import { authMode, sessionFromRequest } from "@/lib/server/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   await connection();
   return Response.json({
     ok: true,
@@ -13,7 +13,7 @@ export async function GET() {
     reader: getReader().id,
     reasoner: getReasoner().id,
     sms: getSmsSender().name,
-    ai_today: await aiUsageToday(),
+    ai_today: await aiUsageToday(sessionFromRequest(req)?.mobile ?? ANONYMOUS),
     auth: authMode(),
     time: new Date().toISOString(),
   });
