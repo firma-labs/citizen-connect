@@ -40,7 +40,8 @@ Your machine always keeps using `.data/`.
    `vercel blob create-store citizen-connect --access private --region bom1 --environment preview`.
 3. **Settings → Environment Variables (Preview)**: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL=claude-opus-5`,
    `DEMO_USERS`, `DEMO_PASSWORD`, `AUTH_SECRET` (e.g. `openssl rand -hex 32`); optionally
-   `AI_DAILY_LIMIT_PER_USER` (20) and `AI_DAILY_LIMIT_TOTAL` (200).
+   `AI_DAILY_LIMIT_PER_USER` (20) and `AI_DAILY_LIMIT_TOTAL` (200), and `PILOT_ALLOW_DELETE=1` to let staff
+   permanently delete archived test scans (archive and restore always work; leave delete off in production).
 4. **Settings → Functions → Region**: Mumbai (`bom1`), next to the Blob store.
 5. Deploy a preview (push a branch, or `vercel deploy`), sign in, then scan → read → verify → track once.
 

@@ -39,7 +39,7 @@
     },
     "stat": {
       "today": "Scanned today",
-      "toSync": "Waiting to upload",
+      "toSync": "Not uploaded from this phone",
       "toVerify": "Ready to check"
     },
     "resume": {
@@ -104,14 +104,18 @@
     "onPhone": "On this phone",
     "others": "From other phones",
     "empty": "Nothing scanned on this phone yet.",
-    "syncNow": "Upload now",
+    "syncNow": "Sync now",
     "offline": "Offline. Scans are saved and upload when the signal returns.",
-    "uploading": "Uploading…",
+    "uploading": "Syncing…",
+    "pendingBadge": "{n, plural, one {# scan waiting to upload} other {# scans waiting to upload}}",
     "uploaded": "{a} of {b} pages uploaded",
     "check": "Check details",
     "retry": "Read again",
     "view": "View record",
-    "pages": "{n, plural, one {# page} other {# pages}}"
+    "pages": "{n, plural, one {# page} other {# pages}}",
+    "archived": "Archived",
+    "deleteLocal": "Delete from this phone",
+    "deleteLocalConfirm": "Delete this scan from this phone? It has not been uploaded, so it will be lost."
   },
   "verify": {
     "title": "Check details",
@@ -365,5 +369,31 @@
   "seal": {
     "ring": "Janata Darbar ✦ Forest Minister's Office ✦ Maharashtra ✦",
     "received": "RECEIVED"
+  },
+  "archive": {
+    "action": "Archive",
+    "title": "Archive {token}?",
+    "body": "It leaves the queue and the counts. It stays on record and can be restored.",
+    "reasonLabel": "Reason",
+    "reasons": {
+      "duplicate": "Duplicate of another application",
+      "test": "Test scan",
+      "mistake": "Scanned by mistake",
+      "other": "Other"
+    },
+    "noteLabel": "Note (optional)",
+    "noteHint": "For example, the token it duplicates.",
+    "routedWarning": "This was already sent to the department, and an SMS may have gone to the citizen.",
+    "confirm": "Archive",
+    "cancel": "Cancel",
+    "error": "Could not archive: {msg}"
+  },
+  "archived": {
+    "title": "Archived — {reason}",
+    "by": "{by} · {date}",
+    "restore": "Restore",
+    "delete": "Delete permanently",
+    "deleteConfirm": "Delete {token} permanently? Its record and page photos are removed from the server. This cannot be undone.",
+    "error": "Could not finish: {msg}"
   }
 }

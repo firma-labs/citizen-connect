@@ -8,7 +8,7 @@
     "dev": "next dev -p 4000",
     "dev:phone": "./scripts/start-dev.sh",
     "phone:prod": "./scripts/start-dev.sh --prod",
-    "prebuild": "node scripts/copy-vendor.mjs && node scripts/i18n.mjs check",
+    "prebuild": "node scripts/copy-vendor.mjs && node scripts/i18n.mjs check && node scripts/i18n.mjs export --build",
     "build": "next build",
     "start": "next start -p 4000",
     "lint": "eslint",

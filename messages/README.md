@@ -33,6 +33,11 @@ Weblate, so the files can go straight into a translation tool.
 npm run i18n:export          # → translations/review.csv (opens in Excel / Google Sheets)
 ```
 
+Every `npm run build` also refreshes `translations/review.csv`, so the latest
+sheet is always there after a build (the folder is not committed). If that file
+holds reviewer edits or notes that were not imported yet, the build keeps it
+and prints a warning instead of overwriting it.
+
 Reviewers correct the language columns and use **reviewer notes** for
 questions. Then:
 

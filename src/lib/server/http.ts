@@ -1,10 +1,16 @@
 import "server-only";
 import { TOKEN_RE, normaliseToken } from "@/lib/token";
+import { getStore } from "./store";
 
 export const json = (data: unknown, init?: number | ResponseInit) =>
   Response.json(data, typeof init === "number" ? { status: init } : init);
 
 export const errorJson = (status: number, error: string) => json({ error }, status);
+
+/** 410 Gone for a permanently deleted token (phones then drop their copy), else 404. */
+export async function notFoundOrGone(token: string) {
+  return (await getStore().wasRemoved(token)) ? errorJson(410, "deleted") : errorJson(404, "not found");
+}
 
 export function parseToken(raw: string): string | null {
   const t = normaliseToken(decodeURIComponent(raw));

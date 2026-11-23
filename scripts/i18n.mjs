@@ -5,12 +5,14 @@
 //                                           valid ICU syntax and the same {placeholders}
 //   node scripts/i18n.mjs export [file]     side-by-side sheet for reviewers
 //                                           (default translations/review.csv; opens in Excel)
+//   node scripts/i18n.mjs export --build    the same, run before every build; keeps an existing
+//                                           sheet that has edits or notes not yet imported
 //   node scripts/i18n.mjs import <file>     apply a reviewed sheet back to messages/*.json
 //
 // English (en.json) is the source language; its key order and nesting are kept.
 
 import { parse, TYPE } from "@formatjs/icu-messageformat-parser";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import Papa from "papaparse";
 
@@ -84,23 +86,51 @@ function check() {
   console.log(`Translations OK: ${keys.length} messages × ${LOCALES.length} languages (${LOCALES.join(", ")}).`);
 }
 
-function exportSheet(file = join(ROOT, "translations", "review.csv")) {
+const DEFAULT_SHEET = join(ROOT, "translations", "review.csv");
+const BOM = "\uFEFF"; // so Excel opens the file as UTF-8 (Devanagari)
+const column = (l) => `${l} (${NAMES[l]})`;
+
+function readSheet(file) {
+  const { data, errors } = Papa.parse(readFileSync(file, "utf8").replace(/^\uFEFF/, ""), { header: true, skipEmptyLines: true });
+  if (errors.length) throw new Error(`CSV: ${errors[0].message} (row ${errors[0].row})`);
+  return data;
+}
+
+/** Rows of an existing sheet that differ from messages/*.json or carry reviewer notes. */
+function pendingEdits(file, flat) {
+  try {
+    return readSheet(file).filter(
+      (row) => row["reviewer notes"]?.trim() || LOCALES.some((l) => (row[column(l)] ?? "").trim() !== (flat[l][row.key] ?? "")),
+    ).length;
+  } catch {
+    return 1; // unreadable — don't overwrite it either
+  }
+}
+
+function exportSheet(file = DEFAULT_SHEET, { build = false } = {}) {
   const flat = Object.fromEntries(LOCALES.map((l) => [l, flatten(read(l))]));
+  if (build && existsSync(file)) {
+    const pending = pendingEdits(file, flat);
+    if (pending) {
+      console.warn(
+        `Kept ${file}: ${pending} row(s) have reviewer edits or notes. Import the edits (npm run i18n:import -- ${file}), then move or delete the file to get a fresh sheet.`,
+      );
+      return;
+    }
+  }
   const rows = Object.keys(flat[SOURCE]).map((key) => ({
     key,
-    ...Object.fromEntries(LOCALES.map((l) => [`${l} (${NAMES[l]})`, flat[l][key] ?? ""])),
+    ...Object.fromEntries(LOCALES.map((l) => [column(l), flat[l][key] ?? ""])),
     "reviewer notes": "",
   }));
   mkdirSync(dirname(file), { recursive: true });
-  // BOM so Excel opens the file as UTF-8 (Devanagari).
-  writeFileSync(file, "﻿" + Papa.unparse(rows, { quotes: true, newline: "\r\n" }));
+  writeFileSync(file, BOM + Papa.unparse(rows, { quotes: true, newline: "\r\n" }));
   console.log(`Wrote ${rows.length} rows to ${file}. Reviewers edit the language columns (keep {placeholders} as they are) and add notes; then run: npm run i18n:import -- ${file}`);
 }
 
 function importSheet(file) {
   if (!file) throw new Error("usage: npm run i18n:import -- <file.csv>");
-  const { data, errors } = Papa.parse(readFileSync(file, "utf8").replace(/^﻿/, ""), { header: true, skipEmptyLines: true });
-  if (errors.length) throw new Error(`CSV: ${errors[0].message} (row ${errors[0].row})`);
+  const data = readSheet(file);
   const flat = Object.fromEntries(LOCALES.map((l) => [l, flatten(read(l))]));
   const order = Object.keys(flat[SOURCE]);
   let changed = 0;
@@ -110,7 +140,7 @@ function importSheet(file) {
       continue;
     }
     for (const l of LOCALES) {
-      const v = row[`${l} (${NAMES[l]})`];
+      const v = row[column(l)];
       if (typeof v === "string" && v.trim() && v !== flat[l][row.key]) {
         flat[l][row.key] = v.trim();
         changed++;
@@ -124,6 +154,7 @@ function importSheet(file) {
 
 const [cmd, arg] = process.argv.slice(2);
 if (cmd === "check") check();
+else if (cmd === "export" && arg === "--build") exportSheet(DEFAULT_SHEET, { build: true });
 else if (cmd === "export") exportSheet(arg);
 else if (cmd === "import") importSheet(arg);
 else {

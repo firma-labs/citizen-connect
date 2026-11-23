@@ -21,6 +21,7 @@ const PATHS: Record<string, string> = {
   doc: "M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5",
   crop: "M6 2v14h14M2 6h14v14",
   chevronDown: "M6 9l6 6 6-6",
+  archive: "M4 5h16v4H4zM5 9v10h14V9M10 13h4",
   rotate: "M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5",
   corners: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
 };

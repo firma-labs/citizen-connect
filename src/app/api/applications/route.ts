@@ -26,6 +26,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return errorJson(400, parsed.error.message);
   const token = parseToken(parsed.data.token);
   if (!token) return errorJson(400, "invalid token format");
+  // A phone still holding a scan that staff deleted must not upload it again.
+  if (await getStore().wasRemoved(token)) return errorJson(410, "deleted");
   const now = new Date().toISOString();
   // Signed-in identity wins over the name typed on the device.
   const session = sessionFromRequest(req);

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { StatTile } from "@/components/ui/StatTile";
-import { getDraft, listApps, subscribe, type LocalApplication } from "@/lib/client/db";
+import { getDraft, subscribe, type LocalApplication } from "@/lib/client/db";
+import { officeSummary, useOfficeApplications } from "@/lib/client/office";
 import { useSettings } from "@/lib/client/settings";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { refLabel, venue } from "@/lib/reference";
@@ -16,7 +17,9 @@ export default function Home() {
   const [settings, hydrated] = useSettings();
   const { t, date, num: nf, locale } = useI18n();
   const [draft, setDraft] = useState<LocalApplication | undefined>();
-  const [counts, setCounts] = useState({ queued: 0, toVerify: 0, today: 0 });
+  // Office-wide counts (every phone), the same numbers the Queue shows.
+  const { local, server } = useOfficeApplications();
+  const office = officeSummary(local, server);
   // Read the clock on the device after load — the page shell is prerendered once.
   const [now, setNow] = useState<Date | null>(null);
 
@@ -24,13 +27,6 @@ export default function Home() {
     const refresh = async () => {
       setDraft(await getDraft());
       setNow(new Date());
-      const apps = await listApps();
-      const today = new Date().toDateString();
-      setCounts({
-        queued: apps.filter((a) => a.state === "queued").length,
-        toVerify: apps.filter((a) => a.server_status === "read" || a.server_status === "read_failed").length,
-        today: apps.filter((a) => a.state !== "draft" && new Date(a.captured_at).toDateString() === today).length,
-      });
     };
     refresh().catch(() => {});
     return subscribe(() => void refresh().catch(() => {}));
@@ -57,9 +53,9 @@ export default function Home() {
           </p>
           <h1 className="mt-0.5 text-[2.1rem] font-bold tracking-tight">{hydrated ? refLabel(v, locale) : " "}</h1>
           <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
-            <StatTile tone="sky" value={nf(counts.today)} label={t("home.stat.today")} />
-            <StatTile tone="peach" value={nf(counts.queued)} label={t("home.stat.toSync")} />
-            <StatTile tone="violet" value={nf(counts.toVerify)} label={t("home.stat.toVerify")} href="/queue" />
+            <StatTile tone="sky" value={nf(now ? office.today : 0)} label={t("home.stat.today")} />
+            <StatTile tone="peach" value={nf(office.notUploaded)} label={t("home.stat.toSync")} />
+            <StatTile tone="violet" value={nf(office.toCheck)} label={t("home.stat.toVerify")} href="/queue" />
           </div>
         </section>
 
@@ -77,7 +73,7 @@ export default function Home() {
         <p className="mt-2 text-center text-[0.92rem] text-ink-3">{t("home.scan.hint")}</p>
 
         <ul className="mt-6 divide-y divide-rule overflow-hidden card">
-          <Row href="/queue" icon="list" label="home.queue" count={counts.toVerify} chip="bg-sky-50 text-sky-700" />
+          <Row href="/queue" icon="list" label="home.queue" count={office.toCheck} chip="bg-sky-50 text-sky-700" />
           <Row href="/track" icon="search" label="home.track" chip="bg-indigo-50 text-indigo-800" />
         </ul>
       </Screen>

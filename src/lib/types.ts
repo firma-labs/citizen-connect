@@ -122,6 +122,17 @@ export interface SmsRecord {
   at: string;
 }
 
+/** Why an application was taken out of the queue (pilot clean-up of duplicates and test scans). */
+export const ARCHIVE_REASONS = ["duplicate", "test", "mistake", "other"] as const;
+export type ArchiveReason = (typeof ARCHIVE_REASONS)[number];
+
+export interface ArchiveRecord {
+  at: string;
+  by: string;
+  reason: ArchiveReason;
+  note: string | null;
+}
+
 export interface AuditEntry {
   at: string;
   by: string;
@@ -153,5 +164,7 @@ export interface Application {
   closing_remark: string | null;
   sms: SmsRecord[];
   audit: AuditEntry[];
+  /** Set while archived: hidden from the queue and counts, kept for the record, can be restored. */
+  archived?: ArchiveRecord | null;
   updated_at: string;
 }

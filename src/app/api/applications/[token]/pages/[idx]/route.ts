@@ -1,5 +1,5 @@
 import { getStore } from "@/lib/server/store";
-import { errorJson, parseToken } from "@/lib/server/http";
+import { errorJson, notFoundOrGone, parseToken } from "@/lib/server/http";
 
 const MAX_BYTES = 4 * 1024 * 1024; // stays under Vercel's 4.5 MB request body limit
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -22,7 +22,7 @@ export async function PUT(req: Request, ctx: RouteContext<"/api/applications/[to
 
   const store = getStore();
   const app = await store.get(token);
-  if (!app) return errorJson(404, "create the application first");
+  if (!app) return (await store.wasRemoved(token)) ? notFoundOrGone(token) : errorJson(404, "create the application first");
   if (idx >= app.page_count) return errorJson(400, "page index beyond page_count");
 
   await store.putPage(token, idx, { bytes, contentType });

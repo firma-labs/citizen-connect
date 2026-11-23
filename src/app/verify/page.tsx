@@ -1,7 +1,8 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { ArchiveDialog, ArchivedNotice } from "@/components/Archive";
 import { RescanPanel } from "@/components/RescanPanel";
 import { AppBar, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
@@ -110,6 +111,7 @@ const toAttention = (c: Confidence | undefined): Attention => (c === "low" ? "lo
 
 function Verify() {
   const token = useSearchParams().get("t") ?? "";
+  const router = useRouter();
   const [settings] = useSettings();
   const { t, date, locale } = useI18n();
   const [app, setApp] = useState<Application | null>(null);
@@ -122,6 +124,7 @@ function Verify() {
   const [zoom, setZoom] = useState<number | null>(null);
   const [viewing, setViewing] = useState(0);
   const [rescanning, setRescanning] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [pollKey, setPollKey] = useState(0);
   const [seededFrom, setSeededFrom] = useState<string | null>(null); // read_at of the AI result in the form
 
@@ -221,8 +224,9 @@ function Verify() {
   const pageUrls = app
     ? Array.from({ length: app.page_count }, (_, i) => `/api/applications/${encodeURIComponent(token)}/pages/${i}?v=${app.pages_version ?? 0}`)
     : [];
-  const canRescan = status === "read" || status === "read_failed" || status === "captured";
-  const showForm = !rescanning && !!form && (status === "read" || (status === "read_failed" && manual));
+  const archived = app?.archived ?? null;
+  const canRescan = !archived && (status === "read" || status === "read_failed" || status === "captured");
+  const showForm = !archived && !rescanning && !!form && (status === "read" || (status === "read_failed" && manual));
   const done = status === "routed" || status === "in_progress" || status === "closed";
   const pageType = (i: number) => {
     const code = app?.extraction?.reader.pages[i]?.page_type;
@@ -238,7 +242,27 @@ function Verify() {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h1 className="token text-[1.5rem]">{token}</h1>
           {status && <StatusTag status={status} />}
+          {app && !archived && (
+            <Button variant="quiet" icon="archive" className="ml-auto" onClick={() => setArchiving(true)}>
+              {t("archive.action")}
+            </Button>
+          )}
         </div>
+
+        {app && archived && (
+          <ArchivedNotice token={token} archived={archived} onRestored={() => void load()} onDeleted={() => router.replace("/queue")} />
+        )}
+        {archiving && (
+          <ArchiveDialog
+            token={token}
+            status={status}
+            onClose={() => setArchiving(false)}
+            onDone={() => {
+              setArchiving(false);
+              void load();
+            }}
+          />
+        )}
 
         {loadError && !app && <Notice tone="error">{loadError === "not found" ? t("verify.notOnServer") : loadError}</Notice>}
 
@@ -312,7 +336,7 @@ function Verify() {
               />
             )}
 
-            {!rescanning && (status === "captured" || status === "reading") && (
+            {!archived && !rescanning && (status === "captured" || status === "reading") && (
               <div className="flex items-start gap-4 card bg-gradient-to-br from-sky-50 via-white to-white p-5" role="status">
                 <span className="mt-1 h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-sky-100 border-t-sky-500" aria-hidden />
                 <div>
@@ -326,7 +350,7 @@ function Verify() {
               </div>
             )}
 
-            {!rescanning && status === "read_failed" && !form && (
+            {!archived && !rescanning && status === "read_failed" && !form && (
               <Notice
                 tone={app?.read_error_code ? "attention" : "error"}
                 title={t(

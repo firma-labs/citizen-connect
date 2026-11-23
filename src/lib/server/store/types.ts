@@ -22,6 +22,13 @@ export interface Store {
   putPage(token: string, idx: number, page: PageBlob): Promise<void>;
   getPage(token: string, idx: number): Promise<PageBlob | null>;
   /**
+   * Permanently delete an application and its pages, leaving a small "deleted"
+   * marker so a phone that still holds the scan cannot upload it again.
+   */
+  remove(token: string, by: string): Promise<void>;
+  /** True if the token was permanently deleted. */
+  wasRemoved(token: string): Promise<boolean>;
+  /**
    * Atomically take one AI reading for `user` on `day`, checking both the
    * per-user and the overall daily limit (0 = no overall limit).
    */

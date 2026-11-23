@@ -10,6 +10,8 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 export type LocalState = "draft" | "queued" | "synced";
 
 export interface LocalApplication {
+  /** Server says staff archived it (stop polling; counts come from the server list). */
+  archived?: boolean;
   token: string;
   venue: string;
   captured_at: string;

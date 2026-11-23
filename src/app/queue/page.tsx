@@ -1,94 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ArchiveDialog, ArchivedNotice } from "@/components/Archive";
 import { TokenCard } from "@/components/TokenCard";
 import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
 import { StatTile } from "@/components/ui/StatTile";
 import { StatusTag } from "@/components/ui/StatusTag";
-import { listApps, subscribe, type LocalApplication } from "@/lib/client/db";
+import { deleteApp } from "@/lib/client/db";
+import { localStatus, officeSummary, useOfficeApplications } from "@/lib/client/office";
 import { onSyncState, requestRead, syncNow } from "@/lib/client/sync";
 import { useI18n } from "@/lib/i18n";
 import { dept, refLabel } from "@/lib/reference";
 
-interface ServerRow {
-  token: string;
-  status: string;
-  captured_at: string;
-  captured_by: string | null;
-  page_count: number;
-  read_error: string | null;
-  summary_en: string | null;
-  verified: { department: string } | null;
-}
-
-// Last server list, kept for the session so the queue shows straight away on the
-// next visit instead of an empty list while the request crosses the network.
-const CACHE_KEY = "cc-queue-server";
-let memoryCache: ServerRow[] | null = null;
-function readCache(): ServerRow[] | null {
-  if (memoryCache) return memoryCache;
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    return raw ? (JSON.parse(raw) as ServerRow[]) : null;
-  } catch {
-    return null;
-  }
-}
-function writeCache(rows: ServerRow[]) {
-  memoryCache = rows;
-  try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(rows));
-  } catch {}
-}
-
 export default function QueuePage() {
   const { t, num } = useI18n();
-  const [local, setLocal] = useState<LocalApplication[]>([]);
-  const [server, setServer] = useState<ServerRow[] | null>(null);
+  const { local: allLocal, server, reload } = useOfficeApplications();
   const [sync, setSync] = useState({ running: false, online: true, lastError: null as string | null });
   const [showToken, setShowToken] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState<{ token: string; status: string } | null>(null);
 
-  const loadServer = useCallback(() => {
-    fetch("/api/applications", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => {
-        writeCache(d.applications);
-        setServer(d.applications);
-      })
-      // Offline or failed: keep showing the last list rather than nothing.
-      .catch(() => setServer((cur) => cur ?? readCache()));
-  }, []);
+  useEffect(() => onSyncState(setSync), []);
 
-  useEffect(() => {
-    const refresh = () => listApps().then((a) => setLocal(a.filter((x) => x.state !== "draft")));
-    refresh();
-    // Show the cached list at once (after hydration, so server and client HTML match), then refresh.
-    void Promise.resolve().then(() => setServer((cur) => cur ?? readCache()));
-    loadServer();
-    const unsub = subscribe(refresh);
-    const off = onSyncState((s) => {
-      setSync(s);
-      if (!s.running) loadServer();
-    });
-    const timer = setInterval(loadServer, 10_000);
-    return () => {
-      unsub();
-      off();
-      clearInterval(timer);
-    };
-  }, [loadServer]);
-
-  const localTokens = new Set(local.map((l) => l.token));
-  const byToken = new Map((server ?? []).map((s) => [s.token, s]));
-  const others = (server ?? []).filter((s) => !localTokens.has(s.token));
-  // Status of every application this screen knows about, for the summary tiles.
-  const statuses = [
-    ...local.map((a) => (a.state === "queued" ? "queued" : (byToken.get(a.token)?.status ?? a.server_status ?? "captured"))),
-    ...others.map((s) => s.status),
-  ];
-  const count = (...st: string[]) => num(statuses.filter((x) => st.includes(x)).length);
+  const office = officeSummary(allLocal, server);
+  const { byToken, others, local, archived } = office;
+  /** A scan that never reached the server can only be removed from this phone. */
+  const deleteLocal = (token: string) => {
+    if (confirm(t("queue.deleteLocalConfirm"))) void deleteApp(token);
+  };
 
   return (
     <>
@@ -96,14 +36,21 @@ export default function QueuePage() {
       <Screen wide>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-[1.7rem] font-bold tracking-tight">{t("queue.title")}</h1>
-          <Button variant="secondary" icon="upload" onClick={() => void syncNow()} disabled={!sync.online || sync.running}>
+          {/* Sync = upload this phone's waiting scans, ask for AI readings, refresh every status. */}
+          <Button variant="secondary" icon="refresh" onClick={() => void syncNow()} disabled={!sync.online || sync.running}>
             {sync.running ? t("queue.uploading") : t("queue.syncNow")}
+            {office.notUploaded > 0 && (
+              <span className="ml-2 inline-grid h-6 min-w-6 place-items-center rounded-full bg-marigold-500 px-1.5 align-middle text-[0.8rem] font-bold leading-none text-white">
+                <span aria-hidden>{num(office.notUploaded)}</span>
+                <span className="sr-only">{t("queue.pendingBadge", { n: office.notUploaded })}</span>
+              </span>
+            )}
           </Button>
         </div>
         <div className="mb-6 grid grid-cols-3 gap-2.5 sm:gap-3">
-          <StatTile tone="peach" value={count("read", "read_failed")} label={t("status.read")} />
-          <StatTile tone="sky" value={count("queued", "captured", "reading")} label={t("status.reading")} />
-          <StatTile tone="mint" value={count("routed", "in_progress", "closed")} label={t("status.routed")} />
+          <StatTile tone="peach" value={num(office.toCheck)} label={t("status.read")} />
+          <StatTile tone="sky" value={num(office.reading)} label={t("status.reading")} />
+          <StatTile tone="mint" value={num(office.routed)} label={t("status.routed")} />
         </div>
 
         {!sync.online && (
@@ -126,7 +73,7 @@ export default function QueuePage() {
           <ul className="mb-8 grid gap-3 lg:grid-cols-2">
             {local.map((a) => {
               const s = byToken.get(a.token);
-              const status = a.state === "queued" ? "queued" : (s?.status ?? a.server_status ?? "captured");
+              const status = localStatus(a, byToken);
               return (
                 <Item
                   key={a.token}
@@ -143,6 +90,8 @@ export default function QueuePage() {
                   }
                   deptCode={s?.verified?.department}
                   onShowToken={() => setShowToken(a.token)}
+                  onArchive={s ? () => setArchiving({ token: a.token, status }) : undefined}
+                  onDeleteLocal={!s && a.state === "queued" ? () => deleteLocal(a.token) : undefined}
                 />
               );
             })}
@@ -166,13 +115,42 @@ export default function QueuePage() {
                   detail={s.status === "read_failed" ? (s.read_error ?? undefined) : (s.summary_en ?? undefined)}
                   deptCode={s.verified?.department}
                   onShowToken={() => setShowToken(s.token)}
+                  onArchive={() => setArchiving({ token: s.token, status: s.status })}
                 />
               ))}
             </ul>
           </>
         )}
+
+        {archived.length > 0 && (
+          <details className="mt-8">
+            <summary className="mb-2 cursor-pointer text-[1.1rem] font-bold">
+              {t("queue.archived")} <span className="font-normal text-ink-3">({archived.length})</span>
+            </summary>
+            <ul className="grid gap-3 lg:grid-cols-2">
+              {archived.map((s) => (
+                <li key={s.token} className="card p-4">
+                  <p className="token mb-2 text-[1.05rem]">{s.token}</p>
+                  <ArchivedNotice token={s.token} archived={s.archived!} onRestored={reload} onDeleted={reload} compact />
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </Screen>
       <BottomNav />
+
+      {archiving && (
+        <ArchiveDialog
+          token={archiving.token}
+          status={archiving.status}
+          onClose={() => setArchiving(null)}
+          onDone={() => {
+            setArchiving(null);
+            reload();
+          }}
+        />
+      )}
 
       {showToken && (
         <div className="fixed inset-0 z-30 overflow-auto bg-ink/70 p-4 backdrop-blur-sm" onClick={() => setShowToken(null)} role="dialog" aria-modal="true">
@@ -208,6 +186,8 @@ function Item({
   deptCode,
   by,
   onShowToken,
+  onArchive,
+  onDeleteLocal,
 }: {
   token: string;
   status: string;
@@ -217,6 +197,8 @@ function Item({
   deptCode?: string;
   by?: string | null;
   onShowToken: () => void;
+  onArchive?: () => void;
+  onDeleteLocal?: () => void;
 }) {
   const { t, date, locale } = useI18n();
   const [retrying, setRetrying] = useState(false);
@@ -239,7 +221,7 @@ function Item({
       </div>
       <p className="mt-1 text-[0.9rem] text-ink-3">{meta.join(" · ")}</p>
       {detail && <p className={`mt-2 line-clamp-2 text-[0.95rem] ${status === "read_failed" ? "text-red-700" : "text-ink-2"}`}>{detail}</p>}
-      {(needsCheck || status === "routed") && (
+      {(needsCheck || status === "routed" || onArchive || onDeleteLocal) && (
         <div className="mt-3 flex flex-wrap gap-2">
           {needsCheck && (
             <Button href={verifyHref} className="flex-1">
@@ -262,6 +244,16 @@ function Item({
           {status === "routed" && (
             <Button variant="secondary" href={verifyHref} className="flex-1">
               {t("queue.view")}
+            </Button>
+          )}
+          {onArchive && (
+            <Button variant="quiet" icon="archive" onClick={onArchive} className="ml-auto">
+              {t("archive.action")}
+            </Button>
+          )}
+          {onDeleteLocal && (
+            <Button variant="quiet" icon="trash" onClick={onDeleteLocal} className="ml-auto text-red-600">
+              {t("queue.deleteLocal")}
             </Button>
           )}
         </div>

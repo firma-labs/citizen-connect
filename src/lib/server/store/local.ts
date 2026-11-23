@@ -10,6 +10,7 @@ const ROOT = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.L
 const APPS = path.join(ROOT, "applications");
 const PAGES = path.join(ROOT, "pages");
 const USAGE = path.join(ROOT, "ai-usage.json");
+const DELETED = path.join(ROOT, "deleted");
 
 /** { "2026-11-23": { "9876543210": 3, "anonymous": 1 } } */
 type Usage = Record<string, Record<string, number>>;
@@ -107,6 +108,21 @@ export const localStore: Store = {
   async aiReadsOn(day, user) {
     const today = (await readUsage())[day] ?? {};
     return { user: today[user] ?? 0, total: sum(today) };
+  },
+  remove: (token, by) =>
+    withLock(token, async () => {
+      await fs.mkdir(DELETED, { recursive: true });
+      await fs.writeFile(path.join(DELETED, `${safe(token)}.json`), JSON.stringify({ token, at: new Date().toISOString(), by }));
+      await fs.rm(appFile(token), { force: true });
+      await fs.rm(path.join(PAGES, safe(token)), { recursive: true, force: true });
+    }),
+  async wasRemoved(token) {
+    try {
+      await fs.access(path.join(DELETED, `${safe(token)}.json`));
+      return true;
+    } catch {
+      return false;
+    }
   },
   async getPage(token, idx): Promise<PageBlob | null> {
     const file = pageFile(token, idx);

@@ -1,7 +1,7 @@
 import "server-only";
 import { dept } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
-import type { Application, AuditEntry, VerifiedFields } from "@/lib/types";
+import type { Application, ArchiveReason, AuditEntry, VerifiedFields } from "@/lib/types";
 import { AIError, getReader, getReasoner, type PageImage } from "./ai";
 import { AI_LIMIT_PER_USER, AI_LIMIT_TOTAL, ANONYMOUS, takeAiRead } from "./quota";
 import { getSmsSender, tokenSms } from "./sms";
@@ -16,7 +16,7 @@ export const allPagesReceived = (a: Application) =>
 export async function claimRead(token: string, force = false): Promise<boolean> {
   let claimed = false;
   await getStore().update(token, (a) => {
-    if (!allPagesReceived(a)) return null;
+    if (a.archived || !allPagesReceived(a)) return null;
     const stale = a.read_started_at && Date.now() - Date.parse(a.read_started_at) > READ_STALE_MS;
     const eligible =
       a.status === "captured" ||
@@ -130,6 +130,7 @@ export class VerifyError extends Error {}
  */
 export async function startRescan(token: string, pageCount: number, by: string) {
   return getStore().update(token, (a) => {
+    if (a.archived) throw new VerifyError("Archived — restore it first");
     if (a.status === "routed" || a.status === "in_progress" || a.status === "closed") {
       throw new VerifyError("Already verified — pages can no longer be replaced");
     }
@@ -180,6 +181,7 @@ export async function verifyApplication(token: string, fields: VerifiedFields, b
   fields = { ...fields, mobile: normaliseMobile(fields.mobile) };
 
   const updated = await store.update(token, (a) => {
+    if (a.archived) throw new VerifyError("Archived — restore it first");
     if (a.status === "routed" || a.status === "in_progress" || a.status === "closed") {
       throw new VerifyError("Already verified");
     }
@@ -228,4 +230,40 @@ export async function verifyApplication(token: string, fields: VerifiedFields, b
     a.audit.push({ at: sms.at, by: "system", action: `sms_${sms.status}`, to: sms.to });
     return a;
   });
+}
+
+// ---------------------------------------------------------------- archive / delete (pilot clean-up)
+
+/** Permanent delete is for the pilot's test data only; switched off unless PILOT_ALLOW_DELETE=1. */
+export const pilotDeleteAllowed = () => process.env.PILOT_ALLOW_DELETE === "1";
+
+/** Take an application out of the queue (duplicate, test scan, mistake). Kept on record; can be restored. */
+export async function archiveApplication(token: string, reason: ArchiveReason, note: string | null, by: string) {
+  return getStore().update(token, (a) => {
+    if (a.archived) return null; // already archived — keep the first record
+    const at = new Date().toISOString();
+    a.archived = { at, by, reason, note };
+    a.audit.push({ at, by, action: "archived", to: note ? `${reason}: ${note}` : reason });
+    return a;
+  });
+}
+
+export async function restoreApplication(token: string, by: string) {
+  return getStore().update(token, (a) => {
+    if (!a.archived) return null;
+    a.audit.push({ at: new Date().toISOString(), by, action: "restored", from: a.archived.reason });
+    a.archived = null;
+    return a;
+  });
+}
+
+/** Delete an archived application and its pages for good (pilot only). */
+export async function deleteApplication(token: string, by: string): Promise<"deleted" | "not_found"> {
+  if (!pilotDeleteAllowed()) throw new VerifyError("Permanent delete is switched off on this server");
+  const store = getStore();
+  const app = await store.get(token);
+  if (!app) return "not_found";
+  if (!app.archived) throw new VerifyError("Archive it first, then delete");
+  await store.remove(token, by);
+  return "deleted";
 }

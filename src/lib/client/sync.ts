@@ -1,6 +1,6 @@
 "use client";
 
-import { getPage, listApps, patchApp, prunePages, type LocalApplication } from "./db";
+import { deleteApp, getPage, listApps, patchApp, prunePages, type LocalApplication } from "./db";
 
 // Drains queued captures to the server: create record → upload each missing
 // page → ask for the AI read → poll status. Every step is idempotent on the
@@ -59,10 +59,15 @@ export async function syncNow(): Promise<void> {
     const apps = await listApps();
     for (const app of apps) {
       if (app.state === "draft") continue;
-      if (app.state === "synced" && app.server_status && DONE.has(app.server_status)) continue;
+      if (app.state === "synced" && ((app.server_status && DONE.has(app.server_status)) || app.archived)) continue;
       try {
         await syncOne(app);
       } catch (e) {
+        if ((e as HttpError).status === 410) {
+          // Staff deleted it permanently (pilot clean-up): drop this phone's copy instead of uploading it again.
+          await deleteApp(app.token);
+          continue;
+        }
         lastError = (e as Error).message;
         await patchApp(app.token, { last_error: lastError });
         if (!navigator.onLine) break;
@@ -74,6 +79,8 @@ export async function syncNow(): Promise<void> {
   }
 }
 
+type HttpError = Error & { status?: number };
+
 async function call(url: string, init?: RequestInit) {
   const res = await fetch(url, { ...init, cache: "no-store" });
   if (res.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
@@ -82,7 +89,7 @@ async function call(url: string, init?: RequestInit) {
     window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+  if (!res.ok) throw Object.assign(new Error(body.error ?? `${res.status} ${res.statusText}`), { status: res.status }) as HttpError;
   return body;
 }
 
@@ -133,8 +140,10 @@ async function syncOne(app: LocalApplication) {
     server_status: status,
     last_error: status === "read_failed" ? application.read_error : null,
     last_sync_at: new Date().toISOString(),
+    archived: !!application.archived,
   });
-  if (DONE.has(status)) await prunePages(app.token);
+  // Uploaded and either finished or archived: the server has the pages, free the phone's storage.
+  if (DONE.has(status) || application.archived) await prunePages(app.token);
 }
 
 /** Fetch the server copy of one application (verification screen). */

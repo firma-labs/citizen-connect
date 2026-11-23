@@ -1,4 +1,4 @@
-import { BlobError, BlobPreconditionFailedError, get, list, put } from "@vercel/blob";
+import { BlobError, BlobPreconditionFailedError, del, get, list, put } from "@vercel/blob";
 import type { Application } from "@/lib/types";
 import type { AiReadResult, PageBlob, Store } from "./types";
 
@@ -8,6 +8,7 @@ import type { AiReadResult, PageBlob, Store } from "./types";
 //   applications/<token>.json   one JSON document per application
 //   pages/<token>/<n>           page images
 //   ai-usage/<YYYY-MM-DD>.json  { "<mobile>": readings } for the daily AI caps
+//   deleted/<token>.json        marker left by a permanent delete (blocks re-upload)
 //
 // Reads bypass the CDN cache (useCache: false) so polling always sees the
 // latest status. Updates are conditional on the ETag read (ifMatch), so two
@@ -20,6 +21,7 @@ const safe = (token: string) => token.replace(/[^A-Z0-9-]/gi, "");
 const appPath = (token: string) => `applications/${safe(token)}.json`;
 const pagePath = (token: string, idx: number) => `pages/${safe(token)}/${idx}`;
 const usagePath = (day: string) => `ai-usage/${day}.json`;
+const deletedPath = (token: string) => `deleted/${safe(token)}.json`;
 const RETRIES = 15;
 /** Short random wait before retrying a write someone else beat us to (spreads out retries). */
 const backoff = (attempt: number) => new Promise((r) => setTimeout(r, Math.random() * 40 * Math.min(attempt + 1, 5)));
@@ -137,6 +139,22 @@ export const blobStore: Store = {
   async getPage(token, idx): Promise<PageBlob | null> {
     const r = await read(pagePath(token, idx));
     return r ? { bytes: r.bytes, contentType: r.contentType } : null;
+  },
+
+  async remove(token, by) {
+    await writeJson(deletedPath(token), { token, at: new Date().toISOString(), by }, {});
+    const pages: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await list({ prefix: `pages/${safe(token)}/`, limit: 1000, cursor });
+      pages.push(...page.blobs.map((b) => b.pathname));
+      cursor = page.hasMore ? page.cursor : undefined;
+    } while (cursor);
+    await del([appPath(token), ...pages]);
+  },
+
+  async wasRemoved(token) {
+    return (await read(deletedPath(token))) !== null;
   },
 
   async takeAiRead(day, user, userLimit, totalLimit): Promise<AiReadResult> {
