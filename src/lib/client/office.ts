@@ -70,12 +70,21 @@ function loadServer() {
 }
 
 function startPolling(pollMs: number) {
-  const timer = setInterval(loadServer, pollMs);
+  // No polling while the app is in the background (phone locked, another app
+  // or tab in front); catch up as soon as it is visible again.
+  const timer = setInterval(() => {
+    if (document.visibilityState === "visible") loadServer();
+  }, pollMs);
+  const onVisible = () => {
+    if (document.visibilityState === "visible" && Date.now() - lastLoad > 2_000) loadServer();
+  };
+  document.addEventListener("visibilitychange", onVisible);
   const off = onSyncState((s) => {
     if (!s.running) loadServer(); // an upload just finished
   });
   return () => {
     clearInterval(timer);
+    document.removeEventListener("visibilitychange", onVisible);
     off();
   };
 }

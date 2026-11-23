@@ -2,6 +2,9 @@
   "name": "citizen-connect",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "postinstall": "node scripts/copy-vendor.mjs",
     "predev": "node scripts/copy-vendor.mjs",

@@ -29,24 +29,45 @@ Override per step with `AI_READER` / `AI_REASONER` (`mock`, `anthropic:<model>`,
 PRD §7.3 comparison runs. Data: JSON files in `.data/` on your machine; Vercel Blob when deployed on Vercel. SMS is logged only
 (`SMS_PROVIDER=console`) until the TRAI DLT templates are approved.
 
-## Deploy to Vercel (pilot demo, Preview)
+## Deploy to Vercel
 
-Data on Vercel lives in a **Vercel Blob** store — the same JSON-per-application layout as `.data/` locally.
-Your machine always keeps using `.data/`.
+The repo deploys as-is: Next.js is detected, `vercel.json` runs the functions in Mumbai (`bom1`), and the
+build copies OpenCV.js into `public/vendor/` and checks the translations (`prebuild`). Data on Vercel lives in
+a private **Vercel Blob** store — the same JSON-per-application layout as `.data/` locally. Your machine
+always keeps using `.data/`.
 
-1. Import `firma-labs/citizen-connect` in Vercel (framework: Next.js).
-2. **Storage → Create → Blob**: name `citizen-connect`, access **Private**, region **Mumbai (bom1)**;
-   connect it to the **Preview** environment (Vercel adds the credentials itself). CLI equivalent:
+1. **Import** `firma-labs/citizen-connect` in Vercel (Add New → Project). Leave the build settings at their
+   defaults; Node 24 comes from `package.json`.
+2. **Storage → Create → Blob**: name `citizen-connect`, access **Private**, region **Mumbai (bom1)**, and
+   connect it to the environments you deploy to (Preview, Production, or both). Vercel adds the
+   credentials itself. CLI equivalent:
    `vercel blob create-store citizen-connect --access private --region bom1 --environment preview`.
-3. **Settings → Environment Variables (Preview)**: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL=claude-opus-5`,
-   `DEMO_USERS`, `DEMO_PASSWORD`, `AUTH_SECRET` (e.g. `openssl rand -hex 32`); optionally
-   `AI_DAILY_LIMIT_PER_USER` (20) and `AI_DAILY_LIMIT_TOTAL` (200), and `PILOT_ALLOW_DELETE=1` to let staff
-   permanently delete archived test scans (archive and restore always work; leave delete off in production).
-4. **Settings → Functions → Region**: Mumbai (`bom1`), next to the Blob store.
-5. Deploy a preview (push a branch, or `vercel deploy`), sign in, then scan → read → verify → track once.
+3. **Settings → Environment Variables** (same environments):
 
-Without sign-in settings the app stays locked on Vercel; without a connected Blob store, API calls return
-an error saying so. Mock or redacted letters only (PRD §9.1).
+   | Variable | Needed | Notes |
+   | --- | --- | --- |
+   | `DEMO_USERS`, `DEMO_PASSWORD` | yes | Staff sign-in. Without them the app stays locked on Vercel. |
+   | `AUTH_SECRET` | yes | `openssl rand -hex 32`, one per environment. |
+   | `ANTHROPIC_API_KEY` | for AI | Without it letters are read by the mock engine. |
+   | `ANTHROPIC_MODEL` | no | Default `claude-opus-5`. |
+   | `AI_DAILY_LIMIT_PER_USER`, `AI_DAILY_LIMIT_TOTAL` | no | Defaults 20 and 200 readings a day. |
+   | `PILOT_ALLOW_DELETE=1` | no | Lets staff permanently delete archived test scans. Leave off in production. |
+   | `PUBLIC_BASE_URL` | no | Only if SMS/QR links must use a custom domain instead of the request's host. |
+
+4. **Deploy**: push to `main` (Production) or any other branch (Preview), or run `vercel deploy`.
+5. **Check**: open `/api/health` after signing in — it should show `"store": "vercel blob"` and
+   `"auth": "on"` — then scan a sample letter → read → verify → track once.
+
+Notes:
+
+- **Plan.** Use a Pro team. Hobby is for non-commercial use, and its Blob operation allowance is small:
+  every open Home, Queue or Applications screen lists the applications about every 10 seconds (paused while
+  the app is in the background). The Blob store only downloads applications that changed since the last
+  listing, and polls that arrive together share one listing.
+- **Limits that already fit Vercel:** page uploads are capped at 4 MB (Vercel's request limit is 4.5 MB);
+  the AI reading and briefing routes allow 120 seconds and finish in the background (`after()`).
+- Without a connected Blob store, API calls return an error saying so. Mock or redacted letters only
+  (PRD §9.1).
 
 ## Layout
 

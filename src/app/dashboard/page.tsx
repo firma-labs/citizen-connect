@@ -54,7 +54,9 @@ export default function DashboardPage() {
   }, []);
   useEffect(() => {
     load();
-    const timer = setInterval(load, 60_000);
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 60_000);
     return () => clearInterval(timer);
   }, [load]);
 

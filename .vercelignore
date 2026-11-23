@@ -1,0 +1,10 @@
+# Kept out of `vercel deploy` uploads from this machine (Git deploys never see them anyway).
+.data
+.env
+.env.*
+!.env.example
+.claude
+.next
+translations
+tsconfig.tsbuildinfo
+public/vendor

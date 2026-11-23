@@ -53,6 +53,7 @@ async function writeJson(path: string, data: unknown, opts: { create?: boolean; 
     ifMatch: opts.ifMatch,
     cacheControlMaxAge: 60,
   });
+  invalidate();
 }
 
 const alreadyExists = (e: unknown) => e instanceof BlobError && /already exists/i.test(e.message);
@@ -71,6 +72,55 @@ async function mapLimit<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): 
     }),
   );
   return out;
+}
+
+// Every open Home / Queue / Applications screen polls the list (about every
+// 10 s). Two things keep that cheap on Blob:
+//   - Documents are kept in memory by ETag: one `list` call says which changed,
+//     and only those are downloaded again.
+//   - Polls arriving together (several phones, several screens) share one
+//     listing for a couple of seconds instead of each starting its own.
+// Memory is per function instance; a cold instance simply reads everything once.
+const docs = new Map<string, { etag: string; app: Application }>();
+const SHARE_MS = 2_000;
+let shared: { at: number; result: Promise<Application[]> } | null = null;
+
+function listAll(): Promise<Application[]> {
+  if (shared && Date.now() - shared.at < SHARE_MS) return shared.result;
+  const result = listFresh();
+  shared = { at: Date.now(), result };
+  result.catch(() => {
+    if (shared?.result === result) shared = null; // don't hand a failure to the next caller
+  });
+  return result;
+}
+
+async function listFresh(): Promise<Application[]> {
+  const found: { pathname: string; etag: string }[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await list({ prefix: "applications/", limit: 1000, cursor });
+    found.push(...page.blobs.map((b) => ({ pathname: b.pathname, etag: b.etag })));
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+
+  const present = new Set(found.map((b) => b.pathname));
+  for (const path of docs.keys()) if (!present.has(path)) docs.delete(path);
+
+  const apps = await mapLimit(found, 8, async ({ pathname, etag }) => {
+    const known = docs.get(pathname);
+    if (known && known.etag === etag) return known.app;
+    const r = await readJson<Application>(pathname);
+    if (!r) return null;
+    docs.set(pathname, { etag: r.etag, app: r.data });
+    return r.data;
+  });
+  return apps.filter((a): a is Application => a !== null);
+}
+
+/** Forget the shared listing after a write here, so the writer's next list shows its change at once. */
+function invalidate() {
+  shared = null;
 }
 
 export const blobStore: Store = {
@@ -113,17 +163,10 @@ export const blobStore: Store = {
     throw new Error(`update conflict on ${token}`);
   },
 
-  /** Newest first. Reads each document — fine for a pilot demo's tens of applications. */
+  /** Newest first. */
   async list(limit = 200) {
-    const paths: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const page = await list({ prefix: "applications/", limit: 1000, cursor });
-      paths.push(...page.blobs.map((b) => b.pathname));
-      cursor = page.hasMore ? page.cursor : undefined;
-    } while (cursor);
-    const apps = (await mapLimit(paths, 8, (p) => readJson<Application>(p))).filter((r) => r !== null).map((r) => r!.data);
-    return apps.sort((a, b) => b.captured_at.localeCompare(a.captured_at)).slice(0, limit);
+    const apps = await listAll();
+    return [...apps].sort((a, b) => b.captured_at.localeCompare(a.captured_at)).slice(0, limit);
   },
 
   async putPage(token, idx, page) {
@@ -151,6 +194,7 @@ export const blobStore: Store = {
       cursor = page.hasMore ? page.cursor : undefined;
     } while (cursor);
     await del([appPath(token), ...pages]);
+    invalidate();
   },
 
   async wasRemoved(token) {

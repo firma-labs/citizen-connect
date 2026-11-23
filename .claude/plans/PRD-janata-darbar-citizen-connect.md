@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Deepak (Firma Labs) — architecture and ~90% of build |
 | Requirements liaison | Jeevan — fortnightly sessions with the ACF (Grade I) officer |
-| Client | Office of the Forest Minister, Government of Maharashtra |
+| Client | Office of the Hon’ble Guardian Minister and Forest Minister, Government of Maharashtra. The Janata Darbar is the Guardian Minister’s initiative. |
 | Status | Draft for internal use · pre-contract |
 | Date | 2026-11-22 |
 | Related | Proposal deck (Claude Slides artifact), intake prototype (claude.ai artifact) |
@@ -13,16 +13,16 @@
 
 ## 1. Problem
 
-The Minister holds Janata Darbar sessions in Navi Mumbai, Thane and Palghar. Citizens arrive with paper applications, mostly handwritten or typed in Marathi, some in Hindi, a few in English. Today:
+The Guardian Minister, who is also Maharashtra’s Forest Minister, holds Janata Darbar sessions in Navi Mumbai, Thane and Palghar. Citizens arrive with paper applications, mostly handwritten or typed in Marathi, some in Hindi, a few in English. Today:
 
 - Applications are collected as paper. There is no token, so the citizen leaves with nothing to quote later.
 - Sorting and routing to departments happens manually, after the event.
 - Nobody can answer "what happened to my application?" without finding the physical file.
-- The Minister's office has no aggregate view: how many applications, on what subjects, from which talukas, how many still open.
+- The Guardian Minister's office has no aggregate view: how many applications, on what subjects, from which talukas, how many still open.
 
 ## 2. Goal
 
-Every citizen leaves the Darbar with a token number and an SMS. Every application is readable, routed and trackable within minutes of being handed over. The Minister's office can see the whole picture before the next Darbar.
+Every citizen leaves the Darbar with a token number and an SMS. Every application is readable, routed and trackable within minutes of being handed over. The Guardian Minister's office can see the whole picture before the next Darbar.
 
 ### Success measures (Phase 1)
 
@@ -41,7 +41,7 @@ Every citizen leaves the Darbar with a token number and an SMS. Every applicatio
 | Citizen | Darbar venue, then anywhere | Hand over the letter, get a token, be able to check status later |
 | Intake staff | Darbar counter, phone in hand | Photograph pages, confirm what the AI read, issue token fast |
 | Department desk officer | Office, desktop | See applications routed to them, update status, close with a remark |
-| Minister / ACF office | Office, desktop or tablet | Dashboard: volumes, categories, ageing, departments lagging; briefing before each Darbar |
+| Guardian Minister's office / ACF | Office, desktop or tablet | Dashboard: volumes, categories, ageing, departments lagging; briefing before each Darbar |
 
 ## 4. Scope — Phase 1
 
@@ -155,7 +155,7 @@ Run the same letter set through each and score:
 | FCS | Food & Civil Supplies | 15 |
 | PWD | Public Works Department | 30 |
 | HLT | Public Health | 7 |
-| OTH | Minister's office – other | 15 |
+| OTH | Guardian Minister's office – other | 15 |
 
 ## 9. Architecture
 
@@ -210,13 +210,14 @@ TRAI DLT registration filed week 1. The live Darbar week depends on the Darbar c
 
 ## 13. Open questions
 
-1. Can the department provide 40–50 real (anonymised) past applications for the pilot answer key?
+1. Can the Guardian Minister's office provide 40–50 real (anonymised) past applications for the pilot answer key?
 2. Who signs off the department list and SLA days?
-3. Does the department have Bhashini access, and is there a production document OCR API behind it?
-4. Which AWS account — new, or an existing department account? Who holds root?
-5. Is there an existing grievance system whose token format must be matched?
-6. Who are the named desk officers per department for UAT?
-7. Confirm in the department's AWS account: is Gemma 3 27B marked Active or Legacy in ap-south-1?
+3. Does the owning office have Bhashini access, and is there a production document OCR API behind it?
+4. Which government body is the legal owner of the platform — the Guardian Minister's office, or a body it designates such as the District Collectorate? That body signs the DPA as Data Fiduciary and holds the TRAI DLT entity and the AWS account.
+5. Which AWS account — new, or an existing government account? Who holds root?
+6. Is there an existing grievance system whose token format must be matched?
+7. Who are the named desk officers per department for UAT?
+8. Confirm in the owning office's AWS account: is Gemma 3 27B marked Active or Legacy in ap-south-1?
 
 ## 14. Assumptions
 
