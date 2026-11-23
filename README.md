@@ -8,10 +8,12 @@ scan pages in the phone browser → token + QR instantly → AI reads → staff 
 ## Run
 
 ```bash
-./scripts/start-dev.sh                 # next dev on :4000 + tailscale serve (tailnet only)
+./scripts/start-dev.sh                 # dev server (hot reload) on :4000 + tailscale serve (tailnet only)
+./scripts/start-dev.sh --prod          # production build + next start: fast, no on-demand compiling
+                                       # or reloads — best for phone testing; restart after code changes
 ./scripts/start-dev.sh --funnel        # public URL via tailscale funnel (no login in this build)
 ./scripts/start-dev.sh --supabase      # also start local Supabase in Docker (ports 553xx) as the store
-./scripts/start-dev.sh --prod          # production build + next start (full offline caching)
+./scripts/start-dev.sh --prod --funnel # flags combine
 ```
 
 Phone URL: `https://<machine>.<tailnet>.ts.net:8443`. Port 8443 keeps it separate from any other

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 4000",
     "dev:phone": "./scripts/start-dev.sh",
+    "phone:prod": "./scripts/start-dev.sh --prod",
     "dev:phone:supabase": "./scripts/start-dev.sh --supabase",
     "build": "next build",
     "start": "next start -p 4000",

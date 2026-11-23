@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 #
-# Citizen Connect — local dev startup.
+# Citizen Connect — local startup.
 # Runs each stage in order and stops at the first one that fails.
 #
-#   ./scripts/start-dev.sh              Next.js dev on :4000 + tailscale serve (tailnet only)
-#   ./scripts/start-dev.sh --supabase   also start local Supabase (Docker) and use it as the store
+#   ./scripts/start-dev.sh              dev server (hot reload) on :4000 + tailscale serve (tailnet only)
+#   ./scripts/start-dev.sh --prod       production build + `next start` — fast, no on-demand
+#                                       compiling or reloads; use for phone testing. Code changes
+#                                       need a restart of this script.
 #   ./scripts/start-dev.sh --funnel     expose on the public internet via tailscale funnel
-#   ./scripts/start-dev.sh --prod       production build + `next start` (service worker caches fully)
+#   ./scripts/start-dev.sh --supabase   also start local Supabase (Docker) and use it as the store
 #   ./scripts/start-dev.sh --no-tailscale
+#
+# Flags combine, e.g. `./scripts/start-dev.sh --prod --funnel`.
 #
 # Phone URL: https://<this-machine>.<tailnet>.ts.net:8443
 #   - `serve` (default): the phone must be signed in to the same tailnet (Tailscale app).
@@ -33,8 +37,8 @@ for arg in "$@"; do
     --supabase) USE_SUPABASE=1 ;;
     --funnel) USE_FUNNEL=1 ;;
     --no-tailscale) USE_TAILSCALE=0 ;;
-    --prod) PROD=1 ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    --prod|--production) PROD=1 ;;
+    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
     *) echo "Unknown option: $arg (see --help)"; exit 2 ;;
   esac
 done
@@ -109,6 +113,15 @@ else
   log_ok "port $APP_PORT is free"
 fi
 
+# --- Stage: production build (before the phone URL goes live) --------------------
+if [ "$PROD" = 1 ]; then
+  log_stage "Production build"
+  # Clean build: a dev server's cache in .next can otherwise leak into it.
+  rm -rf .next || fail_and_stop "failed to remove .next"
+  npm run build || fail_and_stop "npm run build failed"
+  log_ok "build succeeded"
+fi
+
 # --- Stage: tailscale ------------------------------------------------------------
 TS_URL=""
 cleanup() {
@@ -151,7 +164,10 @@ fi
 
 # --- Stage: Next.js ----------------------------------------------------------------
 print_banner() {
+  local mode
+  mode=$([ "$PROD" = 1 ] && echo "production (no hot reload — restart this script after code changes)" || echo "development (hot reload; screens compile on first visit)")
   echo -e "\n${GREEN}${BOLD}Citizen Connect is starting${NC}"
+  echo "  Mode:   $mode"
   echo "  Local:  http://localhost:$APP_PORT"
   if [ -n "$TS_URL" ]; then
     echo -e "  Phone:  ${BOLD}$TS_URL${NC}   (open in Chrome on Android / Safari on iPhone)"
@@ -162,11 +178,7 @@ print_banner() {
 }
 
 if [ "$PROD" = 1 ]; then
-  log_stage "Production build"
-  rm -rf .next || fail_and_stop "failed to remove .next"
-  npm run build || fail_and_stop "npm run build failed"
-  log_ok "build succeeded"
-  log_stage "Starting next start on :$APP_PORT"
+  log_stage "Starting next start (production) on :$APP_PORT"
   print_banner
   npx next start -p "$APP_PORT"
 else

@@ -23,6 +23,26 @@ interface ServerRow {
   verified: { department: string } | null;
 }
 
+// Last server list, kept for the session so the queue shows straight away on the
+// next visit instead of an empty list while the request crosses the network.
+const CACHE_KEY = "cc-queue-server";
+let memoryCache: ServerRow[] | null = null;
+function readCache(): ServerRow[] | null {
+  if (memoryCache) return memoryCache;
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as ServerRow[]) : null;
+  } catch {
+    return null;
+  }
+}
+function writeCache(rows: ServerRow[]) {
+  memoryCache = rows;
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(rows));
+  } catch {}
+}
+
 export default function QueuePage() {
   const { t, num } = useI18n();
   const [local, setLocal] = useState<LocalApplication[]>([]);
@@ -33,13 +53,19 @@ export default function QueuePage() {
   const loadServer = useCallback(() => {
     fetch("/api/applications", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => setServer(d.applications))
-      .catch(() => setServer(null));
+      .then((d) => {
+        writeCache(d.applications);
+        setServer(d.applications);
+      })
+      // Offline or failed: keep showing the last list rather than nothing.
+      .catch(() => setServer((cur) => cur ?? readCache()));
   }, []);
 
   useEffect(() => {
     const refresh = () => listApps().then((a) => setLocal(a.filter((x) => x.state !== "draft")));
     refresh();
+    // Show the cached list at once (after hydration, so server and client HTML match), then refresh.
+    void Promise.resolve().then(() => setServer((cur) => cur ?? readCache()));
     loadServer();
     const unsub = subscribe(refresh);
     const off = onSyncState((s) => {
