@@ -14,7 +14,7 @@ import { refLabel, venue } from "@/lib/reference";
 
 export default function Home() {
   const [settings, hydrated] = useSettings();
-  const { t, date, locale } = useI18n();
+  const { t, date, num: nf, locale } = useI18n();
   const [draft, setDraft] = useState<LocalApplication | undefined>();
   const [counts, setCounts] = useState({ queued: 0, toVerify: 0, today: 0 });
   // Read the clock on the device after load — the page shell is prerendered once.
@@ -37,7 +37,6 @@ export default function Home() {
   }, []);
 
   const v = venue(settings.venue);
-  const nf = (n: number) => new Intl.NumberFormat(locale === "en" ? "en-IN" : `${locale}-IN`).format(n);
 
   return (
     <>

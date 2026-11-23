@@ -43,7 +43,7 @@ const STAGES: { key: Result["stage"]; label: MessageKey }[] = [
 ];
 
 function Track() {
-  const { t, date, locale, tag } = useI18n();
+  const { t, date, num, locale } = useI18n();
   const params = useSearchParams();
   const [token, setToken] = useState(params.get("t") ?? "");
   const [mobile, setMobile] = useState("");
@@ -128,7 +128,7 @@ function Track() {
                   <span
                     className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-full font-bold ${reached ? (i === idx ? "bg-mint-500 text-white shadow-[0_0_0_5px_var(--color-mint-50)]" : "bg-mint-100 text-mint-700") : "bg-paper text-ink-3"}`}
                   >
-                    {reached ? <Icon name="check" size={20} /> : new Intl.NumberFormat(tag).format(i + 1)}
+                    {reached ? <Icon name="check" size={20} /> : num(i + 1)}
                   </span>
                   <div className="pt-1">
                     <p className={reached ? "font-bold" : "text-ink-3"}>{t(s.label)}</p>

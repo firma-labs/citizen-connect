@@ -24,7 +24,7 @@ interface ServerRow {
 }
 
 export default function QueuePage() {
-  const { t, tag } = useI18n();
+  const { t, num } = useI18n();
   const [local, setLocal] = useState<LocalApplication[]>([]);
   const [server, setServer] = useState<ServerRow[] | null>(null);
   const [sync, setSync] = useState({ running: false, online: true, lastError: null as string | null });
@@ -62,7 +62,7 @@ export default function QueuePage() {
     ...local.map((a) => (a.state === "queued" ? "queued" : (byToken.get(a.token)?.status ?? a.server_status ?? "captured"))),
     ...others.map((s) => s.status),
   ];
-  const count = (...st: string[]) => new Intl.NumberFormat(tag).format(statuses.filter((x) => st.includes(x)).length);
+  const count = (...st: string[]) => num(statuses.filter((x) => st.includes(x)).length);
 
   return (
     <>
