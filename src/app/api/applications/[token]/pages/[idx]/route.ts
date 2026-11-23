@@ -1,5 +1,5 @@
 import { getStore } from "@/lib/server/store";
-import { errorJson, notFoundOrGone, parseToken } from "@/lib/server/http";
+import { errorJson, notFoundOrGone, parseToken, withErrors } from "@/lib/server/http";
 
 const MAX_BYTES = 4 * 1024 * 1024; // stays under Vercel's 4.5 MB request body limit
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -12,7 +12,7 @@ async function parse(ctx: RouteContext<"/api/applications/[token]/pages/[idx]">)
 }
 
 /** Upload one page image as the raw request body. Idempotent. */
-export async function PUT(req: Request, ctx: RouteContext<"/api/applications/[token]/pages/[idx]">) {
+export const PUT = withErrors(async (req: Request, ctx: RouteContext<"/api/applications/[token]/pages/[idx]">) => {
   const { token, idx } = await parse(ctx);
   if (!token || idx === null) return errorJson(400, "invalid token or page index");
   const contentType = (req.headers.get("content-type") ?? "").split(";")[0];
@@ -32,7 +32,7 @@ export async function PUT(req: Request, ctx: RouteContext<"/api/applications/[to
     return a;
   });
   return Response.json({ pages_received: updated?.pages_received ?? [] });
-}
+});
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/applications/[token]/pages/[idx]">) {
   const { token, idx } = await parse(ctx);

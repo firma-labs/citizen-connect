@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DEPARTMENT_CODES } from "@/lib/reference";
 import { auditName, sessionFromRequest } from "@/lib/server/auth";
-import { errorJson, json, notFoundOrGone, parseToken } from "@/lib/server/http";
+import { errorJson, json, notFoundOrGone, parseToken, serverError } from "@/lib/server/http";
 import { VerifyError, recordProgress } from "@/lib/server/pipeline";
 
 const note = z.string().trim().max(500).optional().nullable();
@@ -32,6 +32,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/applications/[t
     return json({ application: app });
   } catch (e) {
     if (e instanceof VerifyError) return errorJson(409, e.message);
-    throw e;
+    return serverError(e);
   }
 }

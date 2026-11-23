@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { auditName, sessionFromRequest } from "@/lib/server/auth";
 import { VerifyError, startRescan } from "@/lib/server/pipeline";
-import { errorJson, json, parseToken } from "@/lib/server/http";
+import { errorJson, json, parseToken, serverError } from "@/lib/server/http";
 
 const Body = z.object({ page_count: z.number().int().min(1).max(40), staff: z.string().min(1) });
 
@@ -18,6 +18,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/applications/[t
     return json({ pages_version: app.pages_version, page_count: app.page_count });
   } catch (e) {
     if (e instanceof VerifyError) return errorJson(409, e.message);
-    throw e;
+    return serverError(e);
   }
 }

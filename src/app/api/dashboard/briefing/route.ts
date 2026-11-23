@@ -1,7 +1,7 @@
 import { dashboardStats, daysOpen, isOverdue } from "@/lib/dashboard";
 import { getBriefer, AIError } from "@/lib/server/ai";
 import { sessionFromRequest } from "@/lib/server/auth";
-import { errorJson, json } from "@/lib/server/http";
+import { errorJson, json, serverError } from "@/lib/server/http";
 import { ANONYMOUS, takeAiRead } from "@/lib/server/quota";
 import { getStore } from "@/lib/server/store";
 import { isOpenCase } from "@/lib/types";
@@ -38,6 +38,6 @@ export async function POST(req: Request) {
     return json({ briefing, generated_at: new Date(now).toISOString() });
   } catch (e) {
     if (e instanceof AIError) return errorJson(502, e.message);
-    throw e;
+    return serverError(e);
   }
 }

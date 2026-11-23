@@ -1,11 +1,36 @@
 import "server-only";
 import { TOKEN_RE, normaliseToken } from "@/lib/token";
-import { getStore } from "./store";
+import { StoreBusyError, getStore } from "./store";
 
 export const json = (data: unknown, init?: number | ResponseInit) =>
   Response.json(data, typeof init === "number" ? { status: init } : init);
 
 export const errorJson = (status: number, error: string) => json({ error }, status);
+
+/**
+ * An unexpected failure, answered as JSON like every other error (a bare 500
+ * has no body, and the page would show a JSON parse error instead of a reason).
+ * 503 when the store was busy: nothing was saved, and trying again is safe.
+ */
+export function serverError(e: unknown) {
+  if (e instanceof StoreBusyError) {
+    console.warn(e.message);
+    return errorJson(503, "busy");
+  }
+  console.error(e);
+  return errorJson(500, e instanceof Error ? e.message : "server error");
+}
+
+/** Wrap a route handler so any unexpected failure becomes `serverError`. */
+export function withErrors<A extends unknown[]>(handler: (...args: A) => Promise<Response>) {
+  return async (...args: A): Promise<Response> => {
+    try {
+      return await handler(...args);
+    } catch (e) {
+      return serverError(e);
+    }
+  };
+}
 
 /** 410 Gone for a permanently deleted token (phones then drop their copy), else 404. */
 export async function notFoundOrGone(token: string) {

@@ -168,7 +168,9 @@
       "label": "Resolved on the spot by the Minister",
       "hint": "Tick this if it was settled at the Darbar. It is still routed and recorded, then closed straight away.",
       "remark": "What was decided"
-    }
+    },
+    "busy": "Another save was happening at the same moment, so nothing was saved. Try again.",
+    "saveFailed": "Could not save (error {status}). Nothing is lost — try again."
   },
   "section": {
     "applicant": "Applicant",

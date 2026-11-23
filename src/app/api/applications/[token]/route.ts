@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { auditName, sessionFromRequest } from "@/lib/server/auth";
-import { errorJson, json, notFoundOrGone, parseToken } from "@/lib/server/http";
+import { errorJson, json, notFoundOrGone, parseToken, serverError } from "@/lib/server/http";
 import { VerifyError, deleteApplication } from "@/lib/server/pipeline";
 import { getStore } from "@/lib/server/store";
 
@@ -27,6 +27,6 @@ export async function DELETE(req: Request, ctx: RouteContext<"/api/applications/
     return json({ deleted: true });
   } catch (e) {
     if (e instanceof VerifyError) return errorJson(409, e.message);
-    throw e;
+    return serverError(e);
   }
 }

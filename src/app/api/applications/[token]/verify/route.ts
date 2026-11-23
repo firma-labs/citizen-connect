@@ -2,7 +2,7 @@ import { z } from "zod";
 import { VerifiedFields } from "@/lib/types";
 import { auditName, sessionFromRequest } from "@/lib/server/auth";
 import { VerifyError, verifyApplication } from "@/lib/server/pipeline";
-import { errorJson, json, parseToken, publicOrigin } from "@/lib/server/http";
+import { errorJson, json, parseToken, publicOrigin, serverError } from "@/lib/server/http";
 
 const Body = z.object({
   fields: VerifiedFields,
@@ -29,6 +29,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/applications/[t
     return json({ application: app });
   } catch (e) {
     if (e instanceof VerifyError) return errorJson(409, e.message);
-    throw e;
+    return serverError(e);
   }
 }

@@ -36,3 +36,6 @@ export interface Store {
   /** AI readings used on a day: by one user, and by everyone. */
   aiReadsOn(day: string, user: string): Promise<{ user: number; total: number }>;
 }
+
+/** A save kept losing the race with other saves (or with a lagging read). Safe to retry. */
+export class StoreBusyError extends Error {}

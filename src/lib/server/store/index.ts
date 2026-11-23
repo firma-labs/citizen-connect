@@ -4,6 +4,7 @@ import { localStore } from "./local";
 import type { Store } from "./types";
 
 export type { Store, PageBlob } from "./types";
+export { StoreBusyError } from "./types";
 
 /**
  * Where data lives:

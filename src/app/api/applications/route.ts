@@ -3,7 +3,7 @@ import { z } from "zod";
 import { VENUES } from "@/lib/reference";
 import { auditName, sessionFromRequest } from "@/lib/server/auth";
 import { getStore } from "@/lib/server/store";
-import { errorJson, json, parseToken } from "@/lib/server/http";
+import { errorJson, json, parseToken, withErrors } from "@/lib/server/http";
 import type { Application } from "@/lib/types";
 
 export async function GET() {
@@ -21,7 +21,7 @@ const CreateBody = z.object({
 });
 
 /** Idempotent: the device retries this on every sync until it succeeds. */
-export async function POST(req: Request) {
+export const POST = withErrors(async (req: Request) => {
   const parsed = CreateBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorJson(400, parsed.error.message);
   const token = parseToken(parsed.data.token);
@@ -61,4 +61,4 @@ export async function POST(req: Request) {
     await getStore().update(token, (a) => ({ ...a, page_count: app.page_count }));
   }
   return json({ application: { token: stored.token, status: stored.status, pages_received: stored.pages_received } }, 201);
-}
+});

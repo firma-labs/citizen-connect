@@ -1,6 +1,6 @@
 import { BlobError, BlobPreconditionFailedError, del, get, list, put } from "@vercel/blob";
 import type { Application } from "@/lib/types";
-import type { AiReadResult, PageBlob, Store } from "./types";
+import { StoreBusyError, type AiReadResult, type PageBlob, type Store } from "./types";
 
 // Vercel Blob store for the hosted pilot (Vercel Preview). Same layout as the
 // local .data/ folder, in one private Blob store:
@@ -23,8 +23,14 @@ const pagePath = (token: string, idx: number) => `pages/${safe(token)}/${idx}`;
 const usagePath = (day: string) => `ai-usage/${day}.json`;
 const deletedPath = (token: string) => `deleted/${safe(token)}.json`;
 const RETRIES = 15;
-/** Short random wait before retrying a write someone else beat us to (spreads out retries). */
-const backoff = (attempt: number) => new Promise((r) => setTimeout(r, Math.random() * 40 * Math.min(attempt + 1, 5)));
+/**
+ * Random wait before retrying a write that lost a race. Short at first (another
+ * save landed at the same moment), then longer, so a read that lags just behind
+ * a write has time to catch up: about 4 s in all before giving up.
+ */
+const backoff = (attempt: number) =>
+  new Promise((r) => setTimeout(r, attempt < 5 ? Math.random() * 40 * (attempt + 1) : 250 + Math.random() * 250));
+
 
 async function read(path: string): Promise<{ bytes: Uint8Array; contentType: string; etag: string } | null> {
   try {
@@ -43,9 +49,27 @@ async function readJson<T>(path: string): Promise<{ data: T; etag: string } | nu
   return r ? { data: JSON.parse(new TextDecoder().decode(r.bytes)) as T, etag: r.etag } : null;
 }
 
+// What this instance last wrote to each JSON file, with the ETag the store gave
+// it. On Vercel a read made right after an overwrite can still return the
+// previous version, whose ETag then fails every conditional write. Verifying
+// saves twice in a row (the record, then the SMS log), so it hit exactly that.
+// Updates first try from this copy: if nobody else has written since, its ETag
+// matches and the write goes through; if someone has, the write is refused
+// (ifMatch) and the next attempt reads the store instead.
+const written = new Map<string, { etag: string; data: unknown }>();
+
+/** The newest version to update from: the store's, or this instance's own later write. */
+async function readForUpdate<T>(path: string, attempt: number): Promise<{ data: T; etag: string } | null> {
+  const cur = await readJson<T>(path);
+  const mine = written.get(path);
+  // Only when the file still exists: never bring back one that was deleted meanwhile.
+  if (cur && mine && cur.etag !== mine.etag && attempt % 2 === 0) return { data: structuredClone(mine.data) as T, etag: mine.etag };
+  return cur;
+}
+
 /** Write JSON. `create` fails if the file exists; `ifMatch` fails if it changed since read. */
 async function writeJson(path: string, data: unknown, opts: { create?: boolean; ifMatch?: string }) {
-  await put(path, JSON.stringify(data), {
+  const r = await put(path, JSON.stringify(data), {
     access: ACCESS,
     contentType: "application/json",
     addRandomSuffix: false,
@@ -53,6 +77,7 @@ async function writeJson(path: string, data: unknown, opts: { create?: boolean; 
     ifMatch: opts.ifMatch,
     cacheControlMaxAge: 60,
   });
+  written.set(path, { etag: r.etag, data: structuredClone(data) });
   invalidate();
 }
 
@@ -144,7 +169,7 @@ export const blobStore: Store = {
 
   async update(token, fn) {
     for (let attempt = 0; attempt < RETRIES; attempt++) {
-      const cur = await readJson<Application>(appPath(token));
+      const cur = await readForUpdate<Application>(appPath(token), attempt);
       if (!cur) return null;
       const next = fn(structuredClone(cur.data));
       if (!next) return cur.data;
@@ -160,7 +185,7 @@ export const blobStore: Store = {
         throw e;
       }
     }
-    throw new Error(`update conflict on ${token}`);
+    throw new StoreBusyError(`update conflict on ${token}`);
   },
 
   /** Newest first. */
@@ -194,6 +219,7 @@ export const blobStore: Store = {
       cursor = page.hasMore ? page.cursor : undefined;
     } while (cursor);
     await del([appPath(token), ...pages]);
+    written.delete(appPath(token));
     invalidate();
   },
 
@@ -203,7 +229,7 @@ export const blobStore: Store = {
 
   async takeAiRead(day, user, userLimit, totalLimit): Promise<AiReadResult> {
     for (let attempt = 0; attempt < RETRIES * 2; attempt++) {
-      const cur = await readJson<Record<string, number>>(usagePath(day));
+      const cur = await readForUpdate<Record<string, number>>(usagePath(day), attempt);
       const counts = cur?.data ?? {};
       const total = Object.values(counts).reduce((a, b) => a + b, 0);
       if (totalLimit > 0 && total >= totalLimit) return { ok: false, reason: "total" };
@@ -220,7 +246,7 @@ export const blobStore: Store = {
         throw e;
       }
     }
-    throw new Error("AI usage counter is busy — try again");
+    throw new StoreBusyError("AI usage counter is busy — try again");
   },
 
   async aiReadsOn(day, user) {

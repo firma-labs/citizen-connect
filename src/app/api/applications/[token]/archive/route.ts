@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { auditName, sessionFromRequest } from "@/lib/server/auth";
-import { errorJson, json, parseToken } from "@/lib/server/http";
+import { errorJson, json, parseToken, withErrors } from "@/lib/server/http";
 import { archiveApplication } from "@/lib/server/pipeline";
 import { ARCHIVE_REASONS } from "@/lib/types";
 
@@ -11,7 +11,7 @@ const Body = z.object({
 });
 
 /** Take an application out of the queue (duplicate, test scan, mistake). Restorable. */
-export async function POST(req: Request, ctx: RouteContext<"/api/applications/[token]/archive">) {
+export const POST = withErrors(async (req: Request, ctx: RouteContext<"/api/applications/[token]/archive">) => {
   const token = parseToken((await ctx.params).token);
   if (!token) return errorJson(400, "invalid token");
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -21,4 +21,4 @@ export async function POST(req: Request, ctx: RouteContext<"/api/applications/[t
   const app = await archiveApplication(token, parsed.data.reason, parsed.data.note || null, by);
   if (!app) return errorJson(404, "not found");
   return json({ archived: app.archived });
-}
+});

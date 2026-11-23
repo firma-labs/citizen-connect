@@ -219,8 +219,9 @@ function Verify() {
           resolved_on_spot: onSpot && onSpotRemark.trim() ? { remark: onSpotRemark.trim() } : null,
         }),
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? res.statusText);
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 503) throw new Error(t("verify.busy"));
+      if (!res.ok) throw new Error(body.error ?? t("verify.saveFailed", { status: res.status }));
       setApp(body.application);
       void syncNow();
       window.scrollTo({ top: 0 });
