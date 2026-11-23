@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArchiveDialog, ArchivedNotice } from "@/components/Archive";
 import { CaseActions } from "@/components/CaseActions";
+import { PageImage } from "@/components/PageImage";
 import { Timeline } from "@/components/Timeline";
 import { isOverdue } from "@/lib/dashboard";
 import { RescanPanel } from "@/components/RescanPanel";
@@ -231,9 +232,11 @@ function Verify() {
   }
 
   const status = app?.status;
-  // ?v= busts the browser's image cache after a rescan replaces the pages.
+  // ?v= changes after a rescan and once every page has arrived, so the browser
+  // never reuses an image request made while a page was still uploading.
+  const pagesIn = app ? app.pages_received.length : 0;
   const pageUrls = app
-    ? Array.from({ length: app.page_count }, (_, i) => `/api/applications/${encodeURIComponent(token)}/pages/${i}?v=${app.pages_version ?? 0}`)
+    ? Array.from({ length: app.page_count }, (_, i) => `/api/applications/${encodeURIComponent(token)}/pages/${i}?v=${app.pages_version ?? 0}.${pagesIn}`)
     : [];
   const archived = app?.archived ?? null;
   const canRescan = !archived && (status === "read" || status === "read_failed" || status === "captured");
@@ -290,8 +293,7 @@ function Verify() {
                     aria-label={t("verify.openPage", { n: i + 1 })}
                     className="relative w-36 shrink-0 snap-start overflow-hidden rounded-[var(--radius-control)] border border-rule bg-surface"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- API image */}
-                    <img src={u} alt="" className="aspect-[3/4] w-full object-cover" loading="lazy" />
+                    <PageImage src={u} className="aspect-[3/4] w-full object-cover" lazy />
                     <span className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-2 text-[0.85rem] font-bold text-white">{i + 1}</span>
                     {pageType(i) && <span className="absolute inset-x-0 bottom-0 bg-ink/75 px-2 py-0.5 text-[0.8rem] text-white">{pageType(i)}</span>}
                   </button>
@@ -303,8 +305,7 @@ function Verify() {
                   aria-label={t("verify.openPage", { n: viewing + 1 })}
                   className="block w-full overflow-hidden card"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- API image */}
-                  <img src={pageUrls[Math.min(viewing, pageUrls.length - 1)]} alt="" className="max-h-[calc(100vh-11rem)] w-full object-contain" />
+                  <PageImage src={pageUrls[Math.min(viewing, pageUrls.length - 1)]} className="max-h-[calc(100vh-11rem)] min-h-64 w-full object-contain" />
                 </button>
                 {pageUrls.length > 1 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -614,8 +615,7 @@ function Verify() {
             </div>
           </div>
           <div className="flex-1 overflow-auto" style={{ touchAction: "pinch-zoom pan-x pan-y" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- full-resolution page */}
-            <img src={pageUrls[zoom]} alt="" className="mx-auto w-full max-w-4xl" />
+            <PageImage src={pageUrls[zoom]} className="mx-auto min-h-64 w-full max-w-4xl" />
           </div>
         </div>
       )}

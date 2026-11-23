@@ -38,7 +38,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/applications/[t
   const { token, idx } = await parse(ctx);
   if (!token || idx === null) return errorJson(400, "invalid token or page index");
   const page = await getStore().getPage(token, idx);
-  if (!page) return errorJson(404, "not found");
+  // Never cacheable: the page may simply not have finished uploading yet.
+  if (!page) return Response.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
   return new Response(page.bytes as BodyInit, {
     headers: { "Content-Type": page.contentType, "Cache-Control": "private, max-age=86400, immutable" },
   });

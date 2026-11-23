@@ -543,5 +543,9 @@
       "limit": "Your AI limit for today is reached.",
       "limitTotal": "Today's overall AI limit is reached."
     }
+  },
+  "page": {
+    "unavailable": "Page not available yet",
+    "retry": "Try again"
   }
 }
