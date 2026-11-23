@@ -77,7 +77,7 @@ export default function DashboardPage() {
 
         {s && (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2.5 sm:gap-3">
               <StatTile tone="sky" value={num(s.received)} label={t("dash.kpi.received")} sub={s.awaiting_check ? t("dash.kpi.awaiting", { n: s.awaiting_check }) : undefined} />
               <StatTile tone="mint" value={`${num(s.resolved_pct)}%`} label={t("dash.kpi.resolved")} sub={t("dash.kpi.resolvedOf", { a: s.resolved, b: s.routed })} />
               <StatTile tone="violet" value={num(s.open)} label={t("dash.kpi.open")} sub={t("dash.kpi.openSub")} />

@@ -7,6 +7,10 @@ export interface Settings {
   staff: string;
   venue: string;
   autoCrop: boolean;
+  /** Show the sample letters on the Scan screen (demos and testing). */
+  showSamples: boolean;
+  /** Text size on this phone, on top of the phone's own setting: 1, 1.15 or 1.3. */
+  textScale: number;
   locale: "mr" | "en" | "hi";
   /** Show the English label under each field when the UI is in Marathi or Hindi. */
   hints: boolean;
@@ -17,6 +21,8 @@ const DEFAULTS: Settings = {
   staff: "",
   venue: "TH",
   autoCrop: true,
+  textScale: 1,
+  showSamples: true,
   locale: "mr",
   hints: true,
 };

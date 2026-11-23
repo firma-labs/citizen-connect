@@ -9,7 +9,7 @@ const DEV = new URL(self.location.href).searchParams.get("dev") === "1";
 const VERSION = "cc-v2";
 const SHELL = `${VERSION}-shell`;
 const STATIC = `${VERSION}-static`;
-const SHELL_ROUTES = ["/", "/capture", "/queue", "/verify", "/track", "/settings", "/offline", "/login"];
+const SHELL_ROUTES = ["/", "/capture", "/queue", "/applications", "/dashboard", "/verify", "/track", "/settings", "/offline", "/login", "/privacy", "/terms", "/accessibility"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -77,7 +77,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   // Versioned vendor files (OpenCV.js for page clean-up): fetched once, then offline.
-  if (url.pathname.startsWith("/vendor/")) {
+  if (url.pathname.startsWith("/vendor/") || url.pathname.startsWith("/samples/")) {
     event.respondWith(cacheFirst(request, STATIC));
     return;
   }

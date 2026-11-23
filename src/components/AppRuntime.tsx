@@ -4,12 +4,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { startSync } from "@/lib/client/sync";
 import { detectEnv, type BrowserEnv } from "@/lib/client/environment";
+import { useSettings } from "@/lib/client/settings";
 import { useHtmlLang, useI18n } from "@/lib/i18n";
 import { Button } from "./ui/Button";
 import { Notice } from "./ui/Notice";
 
 // Pages anyone may see without signing in (the proxy allows the same ones).
-const PUBLIC_PATHS = ["/login", "/track", "/offline"];
+const PUBLIC_PATHS = ["/login", "/track", "/offline", "/privacy", "/terms", "/accessibility"];
 
 /**
  * Sends a screen that is already open to sign-in once the server says this
@@ -54,8 +55,17 @@ function useSessionGuard() {
 }
 
 /** Registers the service worker, starts background upload, keeps <html lang> current, enforces sign-in, warns about in-app browsers. */
+/** Applies the in-app Text size (Settings → App) on top of the phone's own text size. */
+function useTextScale() {
+  const [settings] = useSettings();
+  useEffect(() => {
+    document.documentElement.style.setProperty("--text-scale", String(settings.textScale || 1));
+  }, [settings.textScale]);
+}
+
 export function AppRuntime() {
   useHtmlLang();
+  useTextScale();
   useSessionGuard();
   const { t } = useI18n();
   const [env, setEnv] = useState<BrowserEnv | null>(null);

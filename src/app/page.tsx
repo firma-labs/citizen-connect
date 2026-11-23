@@ -53,7 +53,7 @@ export default function Home() {
           <h1 className="mt-0.5">
             <VenuePicker large />
           </h1>
-          <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
+          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-2.5 sm:gap-3">
             <StatTile tone="sky" value={nf(now ? office.today : 0)} label={t("home.stat.today")} />
             <StatTile tone="peach" value={nf(office.notUploaded)} label={t("home.stat.toSync")} />
             <StatTile tone="violet" value={nf(office.toCheck)} label={t("home.stat.toVerify")} href="/queue" />

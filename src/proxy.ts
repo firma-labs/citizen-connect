@@ -3,7 +3,7 @@ import { SESSION_COOKIE, authMode, readSession } from "@/lib/server/auth";
 
 // Staff sign-in gate for the pilot. The citizen status page stays public: it
 // shows nothing without a token and the matching mobile number.
-const PUBLIC = [/^\/login$/, /^\/api\/auth\//, /^\/track$/, /^\/api\/track$/, /^\/offline$/];
+const PUBLIC = [/^\/login$/, /^\/api\/auth\//, /^\/track$/, /^\/api\/track$/, /^\/offline$/, /^\/privacy$/, /^\/terms$/, /^\/accessibility$/];
 
 export function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;

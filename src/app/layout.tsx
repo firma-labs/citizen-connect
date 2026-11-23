@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { Noto_Sans, Poppins } from "next/font/google";
 import { AppRuntime } from "@/components/AppRuntime";
 import "./globals.css";
 
-// Poppins (Indian Type Foundry): geometric Latin with a matching Devanagari,
-// so Marathi, Hindi and English share weight, height and rhythm.
+// Noto Sans (UX4G's typeface): body text and form fields — Google's reference
+// Devanagari, the most legible for long Marathi and Hindi text.
+// Poppins (Indian Type Foundry): headings, token numbers and big figures —
+// the app's geometric personality.
+const noto = Noto_Sans({ variable: "--font-noto", subsets: ["devanagari", "latin"], weight: ["400", "500", "600", "700"] });
 const poppins = Poppins({ variable: "--font-poppins", subsets: ["devanagari", "latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
@@ -35,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // suppressHydrationWarning: browser extensions (e.g. ColorZilla, GA opt-out) add
     // attributes to <html>/<body> before React hydrates; lang is also updated on the
     // client when the user switches language. Applies to these two tags only.
-    <html lang="mr" className={`${poppins.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="mr" className={`${noto.variable} ${poppins.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <AppRuntime />
         {children}

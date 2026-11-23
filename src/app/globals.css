@@ -63,8 +63,8 @@
   --color-focus: #ffd43b;
 
   /* Material 3 colour roles */
-  --color-primary: #5a43cf; /* filled buttons, active controls — white text 6.7:1 */
-  --color-primary-hover: #4d37bd;
+  --color-primary: #4a2bc2; /* UX4G Primary 600 — filled buttons, active controls; white text 8.5:1 */
+  --color-primary-hover: #3d22a6;
   --color-on-primary: #ffffff;
   --color-primary-container: #e9e3ff; /* tonal buttons, selected chips and segments */
   --color-primary-container-hover: #ddd4ff;
@@ -73,7 +73,8 @@
   --color-surface-container: #f3f1fa; /* cards */
   --color-surface-container-high: #ece9f6; /* fields inside cards, switch tracks */
 
-  --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-sans: var(--font-noto), system-ui, sans-serif; /* body, forms (UX4G: Noto Sans) */
+  --font-display: var(--font-poppins), var(--font-noto), system-ui, sans-serif; /* headings, tokens, figures */
 
   /* Corner scale (Material 3 small / medium / large; buttons use the
      Material 3 Expressive "square" shape). Status tags, counters, avatars and
@@ -96,8 +97,10 @@
   border-radius: var(--radius-panel);
 }
 
+/* Text size: relative to the browser's own setting (so the phone's larger-text
+   setting carries through), times the in-app Text size choice (Settings → App). */
 html {
-  font-size: 17px;
+  font-size: calc(106.25% * var(--text-scale, 1)); /* 17px at the default 16px */
   -webkit-tap-highlight-color: transparent;
   text-size-adjust: 100%;
 }
@@ -107,13 +110,22 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.6; /* Devanagari needs room for matras above and below */
+  /* Long links and tokens wrap instead of pushing the page sideways at large text sizes. */
+  overflow-wrap: break-word;
 }
 
 h1,
 h2,
 h3 {
+  font-family: var(--font-display);
   line-height: 1.3;
   text-wrap: balance;
+}
+
+/* Marathi and Hindi running text gets room for matras above and below (UX4G:
+   1.8 for Devanagari). Controls, chips and one-line labels stay compact. */
+:is(p, li, dd, blockquote, textarea):is(:lang(mr), :lang(hi)):not([class*="leading-"]) {
+  line-height: 1.8;
 }
 
 /* Visible keyboard focus (GOV.UK / UX4G / WCAG 2.2 2.4.13): a dark outline on a
@@ -149,6 +161,7 @@ textarea {
 }
 
 .token {
+  font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.05em;
   font-variant-numeric: tabular-nums;

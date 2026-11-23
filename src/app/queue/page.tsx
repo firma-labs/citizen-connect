@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArchiveDialog, ArchivedNotice } from "@/components/Archive";
 import { TokenCard } from "@/components/TokenCard";
+import { ScanFab } from "@/components/ScanFab";
 import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
@@ -50,7 +51,7 @@ export default function QueuePage() {
             )}
           </Button>
         </div>
-        <div className="mb-6 grid grid-cols-3 gap-2.5 sm:gap-3">
+        <div className="mb-6 grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-2.5 sm:gap-3">
           <StatTile tone="peach" value={num(office.toCheck)} label={t("status.read")} />
           <StatTile tone="sky" value={num(office.reading)} label={t("status.reading")} />
           <StatTile tone="mint" value={num(office.routed)} label={t("status.routed")} />
@@ -106,7 +107,7 @@ export default function QueuePage() {
             <h2 className="mb-2 text-[1.1rem] font-bold">
               {t("queue.others")} <span className="font-normal text-ink-3">({others.length})</span>
             </h2>
-            <ul className="grid gap-3 lg:grid-cols-2">
+            <ul className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0">
               {others.map((s) => (
                 <Item
                   key={s.token}
@@ -130,7 +131,7 @@ export default function QueuePage() {
             <summary className="mb-2 cursor-pointer text-[1.1rem] font-bold">
               {t("queue.archived")} <span className="font-normal text-ink-3">({archived.length})</span>
             </summary>
-            <ul className="grid gap-3 lg:grid-cols-2">
+            <ul className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0">
               {archived.map((s) => (
                 <li key={s.token} className="card p-4">
                   <p className="token mb-2 text-[1.05rem]">{s.token}</p>
@@ -140,7 +141,10 @@ export default function QueuePage() {
             </ul>
           </details>
         )}
+        {/* room so the floating Scan button never covers the last item */}
+        <div aria-hidden className="h-20" />
       </Screen>
+      <ScanFab />
       <BottomNav />
 
       {archiving && (

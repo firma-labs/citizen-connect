@@ -429,7 +429,7 @@ function Verify() {
                     help={!form.mobile ? <span className="text-marigold-700">{t("field.mobile.missing")}</span> : undefined}
                   />
                   <TextField id="address" label="field.address" form={form} set={set} attention={attentionOf("address")} multiline />
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-5 sm:grid-cols-2 [&>*]:min-w-0">
                     <TextField id="locality" label="field.locality" form={form} set={set} attention={attentionOf("locality")} />
                     <TextField id="taluka" label="field.taluka" form={form} set={set} attention={attentionOf("taluka")} />
                   </div>
@@ -438,7 +438,7 @@ function Verify() {
 
                 <section className="space-y-5">
                   <SectionTitle k="section.letter" />
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-5 sm:grid-cols-2 [&>*]:min-w-0">
                     <TextField id="letter_date" label="field.date" form={form} set={set} attention={attentionOf("letter_date")} type="date" />
                     <Field id="language" label="field.language">
                       <select id="language" value={form.language} onChange={(e) => set("language", e.target.value as VerifiedFields["language"])} className={inputClass()}>

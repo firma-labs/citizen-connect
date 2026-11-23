@@ -9,7 +9,7 @@
     "queue": "Queue",
     "track": "Status",
     "settings": "Settings",
-    "applications": "Cases",
+    "applications": "Applications",
     "dashboard": "Dashboard"
   },
   "back": "Back",
@@ -56,7 +56,7 @@
     },
     "queue": "Queue and checking",
     "track": "Check a status",
-    "applications": "Cases and follow-up",
+    "applications": "Applications and follow-up",
     "dashboard": "Dashboard and briefing"
   },
   "capture": {
@@ -303,6 +303,17 @@
     "group": {
       "display": "Display",
       "scanning": "Scanning"
+    },
+    "textSize": {
+      "label": "Text size",
+      "default": "Default",
+      "large": "Large",
+      "larger": "Larger",
+      "hint": "On top of your phone's own text size setting."
+    },
+    "samples": {
+      "label": "Show sample letters",
+      "hint": "Fictional letters on the Scan screen for demos and testing. Turn off at a real Darbar."
     }
   },
   "login": {
@@ -426,7 +437,7 @@
     "resolved": "Resolved",
     "resolvedOnSpot": "Resolved on the spot at the Darbar",
     "timeline": "Timeline",
-    "toApplications": "All cases"
+    "toApplications": "All applications"
   },
   "case": {
     "title": "Department follow-up",
@@ -468,7 +479,7 @@
     "restored": "Restored"
   },
   "apps": {
-    "title": "Cases",
+    "title": "Applications",
     "search": "Search token, name or subject",
     "department": "Department",
     "allDepartments": "All departments",
@@ -479,7 +490,7 @@
     "resolved": "Resolved",
     "session": "Darbar session",
     "allSessions": "All sessions",
-    "count": "{n} of {total} cases",
+    "count": "{n} of {total} applications",
     "loading": "Loading…",
     "empty": "No application has been routed yet. They appear here once staff check and save them.",
     "noMatch": "Nothing matches these filters.",
@@ -547,5 +558,102 @@
   "page": {
     "unavailable": "Page not available yet",
     "retry": "Try again"
+  },
+  "a11y": {
+    "skip": "Skip to main content",
+    "title": "Accessibility statement",
+    "aim": {
+      "h": "Our aim",
+      "p": "We want everyone to be able to use this service, including people who use screen readers, keyboards or larger text. It aims to meet WCAG 2.1 level AA and the Guidelines for Indian Government Websites (GIGW 3.0)."
+    },
+    "works": {
+      "h": "What works",
+      "p": "Marathi, Hindi and English; text that follows your phone's text size; keyboard use with a visible focus outline and a skip link; colours with enough contrast; and status shown in words, not by colour alone."
+    },
+    "limits": {
+      "h": "Known limits during the pilot",
+      "p": "The service has not yet been formally audited. Photographs of letters cannot be read by screen readers; the details read from them are shown as text."
+    },
+    "contact": {
+      "h": "Report a problem",
+      "p": "If something does not work for you, please tell the Minister's office using the contact details below."
+    }
+  },
+  "footer": {
+    "office": "Office of the Forest Minister, Maharashtra",
+    "contact": "Contact details will be added here by the office.",
+    "nav": "About this service",
+    "privacy": "Privacy notice",
+    "terms": "Terms of use",
+    "accessibility": "Accessibility statement"
+  },
+  "legal": {
+    "draft": "Draft for the pilot. The final text will be issued by the Office of the Forest Minister.",
+    "back": "Check an application's status"
+  },
+  "privacy": {
+    "title": "Privacy notice",
+    "collect": {
+      "h": "What we collect",
+      "p": "The letter you hand in at the Janata Darbar, photographs of its pages, and the details read from it: your name, mobile number, address and what you are asking for."
+    },
+    "why": {
+      "h": "Why",
+      "p": "Only to register your application, send it to the department that can act on it, and let you check its status."
+    },
+    "who": {
+      "h": "Who can see it",
+      "p": "Staff of the Minister's office and the department your application is sent to. Your details are not sold or used for any other purpose."
+    },
+    "ai": {
+      "h": "Reading the letter",
+      "p": "The pages are read with the help of an AI service to save time. Staff check every detail against your letter before it is saved."
+    },
+    "keep": {
+      "h": "How long we keep it",
+      "p": "As long as needed to act on your application, and as required by government record-keeping rules."
+    },
+    "rights": {
+      "h": "Your rights",
+      "p": "Under the Digital Personal Data Protection Act, 2023 you can ask to see or correct your details, or raise a grievance, using the contact details below."
+    },
+    "status": {
+      "h": "The status page",
+      "p": "It shows only the stage of your application, never your personal details, and needs both your token number and your mobile number."
+    }
+  },
+  "terms": {
+    "title": "Terms of use",
+    "service": {
+      "h": "This service",
+      "p": "It lets you check the status of an application you handed in at the Janata Darbar."
+    },
+    "status": {
+      "h": "What the status means",
+      "p": "The status is shown for your information. The department's written reply is its official decision."
+    },
+    "use": {
+      "h": "Fair use",
+      "p": "Please look up only your own application. Do not try to guess other token numbers."
+    },
+    "availability": {
+      "h": "Availability",
+      "p": "The service may be unavailable at times for maintenance. Your application is not affected."
+    }
+  },
+  "samples": {
+    "title": "Try a sample letter",
+    "hint": "Fictional letters for demos and testing. They are scanned, read and routed like real ones.",
+    "pages": "{n} pages",
+    "water": "Water supply",
+    "meta": {
+      "water": "Marathi · handwritten",
+      "crop": "Marathi · handwritten",
+      "pension": "Hindi · printed",
+      "leopard": "Marathi · 3 pages with signatures"
+    },
+    "crop": "Crop damage",
+    "pension": "Pension stopped",
+    "leopard": "Leopard petition"
   }
 }

@@ -35,7 +35,7 @@ export function VenuePicker({
         }}
         // Inline size: the global 16px rule for form controls (stops iOS zoom) would otherwise win.
         style={{ fontSize: large ? "2.1rem" : "0.98rem" }}
-        className={`cursor-pointer appearance-none bg-transparent font-bold text-ink disabled:cursor-default disabled:opacity-60 ${
+        className={`max-w-full cursor-pointer appearance-none truncate bg-transparent font-bold text-ink disabled:cursor-default disabled:opacity-60 ${
           large ? "rounded-[var(--radius-control)] py-0.5 pr-10 leading-tight tracking-tight hover:bg-ink/5" : "h-10 pl-3 pr-9"
         }`}
       >

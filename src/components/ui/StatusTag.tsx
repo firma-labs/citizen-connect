@@ -25,7 +25,7 @@ export function StatusTag({ status, overdue = false }: { status: string; overdue
   const tone = TONES[overdue ? "overdue" : status] ?? TONES.draft;
   const label = t(`status.${status}` as MessageKey);
   return (
-    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-[0.85rem] font-semibold leading-none ${tone.tag}`}>
+    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[0.85rem] font-semibold leading-none ${tone.tag}`}>
       <span className={`h-2 w-2 rounded-full ${tone.dot}`} aria-hidden />
       {overdue ? t("status.overdue", { status: label }) : label}
     </span>

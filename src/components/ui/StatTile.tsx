@@ -16,12 +16,12 @@ export function StatTile({ tone, value, label, sub, href }: { tone: Tone; value:
   const t = TONES[tone];
   const body = (
     <>
-      <span className={`block text-[2rem] font-bold leading-none tracking-tight ${t.value}`}>{value}</span>
+      <span className={`block font-display text-[2rem] font-bold leading-none tracking-tight ${t.value}`}>{value}</span>
       <span className={`mt-2 block text-[0.88rem] font-semibold leading-snug ${t.label}`}>{label}</span>
       {sub && <span className={`mt-0.5 block text-[0.8rem] leading-snug opacity-80 ${t.label}`}>{sub}</span>}
     </>
   );
-  const cls = `block rounded-[var(--radius-panel)] p-4 ${t.box}`;
+  const cls = `block min-w-0 break-words rounded-[var(--radius-panel)] p-4 ${t.box}`;
   return href ? (
     <Link href={href} className={`${cls} ${t.hover} transition-colors`}>
       {body}

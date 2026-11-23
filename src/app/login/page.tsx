@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { PublicFooter } from "@/components/PublicFooter";
 import { AppBar, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Field, inputClass } from "@/components/ui/Field";
@@ -107,6 +108,7 @@ function Login() {
           {t("login.citizen")}
         </Link>
       </p>
+      <PublicFooter />
     </div>
   );
 }

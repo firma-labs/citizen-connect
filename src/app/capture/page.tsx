@@ -11,6 +11,7 @@ import { TokenCard } from "@/components/TokenCard";
 import { deleteApp, getDraft, getPages, patchApp, putApp, setPages, type LocalPage } from "@/lib/client/db";
 import { processPhoto, warmUpScanner, type ProcessedPage } from "@/lib/client/image";
 import { useSettings } from "@/lib/client/settings";
+import { SAMPLE_LETTERS, type SampleLetter } from "@/lib/samples";
 import { syncNow } from "@/lib/client/sync";
 import { useI18n } from "@/lib/i18n";
 import { generateToken } from "@/lib/token";
@@ -115,11 +116,30 @@ export default function CapturePage() {
   }
 
   async function onFiles(files: FileList | null) {
-    if (!files?.length || !token) return;
+    if (!files?.length) return;
+    await addPhotos(Array.from(files));
+    if (cameraInput.current) cameraInput.current.value = "";
+    if (galleryInput.current) galleryInput.current.value = "";
+  }
+
+  /** Sample letter: its pages go through the same straightening and clean-up as a photo. */
+  async function addSample(sample: SampleLetter) {
+    try {
+      const blobs = await Promise.all(
+        sample.pages.map((u) => fetch(u).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`${r.status}`))))),
+      );
+      await addPhotos(blobs);
+    } catch (e) {
+      setError(t("capture.readError", { msg: (e as Error).message }));
+    }
+  }
+
+  async function addPhotos(files: Blob[]) {
+    if (!files.length || !token) return;
     setError(null);
     setBusy((n) => n + files.length);
     const out: ProcessedPage[] = [];
-    for (const f of Array.from(files)) {
+    for (const f of files) {
       try {
         out.push(await processPhoto(f, { autoCrop: settings.autoCrop }));
       } catch (e) {
@@ -129,8 +149,6 @@ export default function CapturePage() {
       }
     }
     if (out.length) await addProcessed(out);
-    if (cameraInput.current) cameraInput.current.value = "";
-    if (galleryInput.current) galleryInput.current.value = "";
   }
 
   async function move(i: number, dir: -1 | 1) {
@@ -223,7 +241,7 @@ export default function CapturePage() {
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <p className="text-ink-3">{t("capture.count")}</p>
-            <p className="text-[2.4rem] font-bold leading-none tracking-tight text-indigo-800">{pages.length}</p>
+            <p className="font-display text-[2.4rem] font-bold leading-none tracking-tight text-indigo-800">{pages.length}</p>
           </div>
           {token && <p className="token pb-1 text-[0.95rem] text-ink-3">{token}</p>}
         </div>
@@ -247,6 +265,41 @@ export default function CapturePage() {
             {t("capture.gallery")}
           </Button>
         </div>
+
+        {/* Sample letters for demos and testing, offered before the first page (Settings → App → Scanning hides them). */}
+        {settings.showSamples !== false && pages.length === 0 && (
+          <section aria-labelledby="samples-title" className="mt-5">
+            <h2 id="samples-title" className="font-semibold">
+              {t("samples.title")}
+            </h2>
+            <p className="text-[0.9rem] text-ink-3">{t("samples.hint")}</p>
+            <ul className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3">
+              {SAMPLE_LETTERS.map((s) => (
+                <li key={s.id} className="min-w-0">
+                  <button
+                    onClick={() => void addSample(s)}
+                    disabled={!token || busy > 0}
+                    className="block w-full overflow-hidden rounded-[var(--radius-panel)] bg-surface-container text-left transition-colors hover:bg-surface-container-high disabled:opacity-50"
+                  >
+                    <span className="relative block">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- small static sample */}
+                      <img src={s.pages[0]} alt="" className="aspect-[4/3] w-full object-cover object-top" loading="lazy" />
+                      {s.pages.length > 1 && (
+                        <span className="absolute bottom-2 left-2 rounded-full bg-ink px-2.5 py-0.5 text-[0.78rem] font-semibold text-white">
+                          {t("samples.pages", { n: s.pages.length })}
+                        </span>
+                      )}
+                    </span>
+                    <span className="block px-3 py-2">
+                      <span className="block font-semibold leading-snug">{t(s.title)}</span>
+                      <span className="block text-[0.82rem] text-ink-3">{t(s.meta)}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {busy > 0 && (
           <Notice tone="info" role="status" className="mt-3">
@@ -307,7 +360,7 @@ export default function CapturePage() {
       </Screen>
 
       {/* Issue-token bar: just above the bottom tab bar on phones, at the bottom on wide screens */}
-      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 border-t border-rule bg-surface/95 px-4 py-3 backdrop-blur-md lg:bottom-0">
+      <div className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-10 border-t border-rule bg-surface/95 px-4 py-3 backdrop-blur-md lg:bottom-0">
         <div className="mx-auto flex max-w-2xl gap-3">
           {pages.length > 0 && (
             <Button variant="danger" size="lg" icon="trash" onClick={() => void discard()} aria-label={t("capture.discard")}>

@@ -133,6 +133,19 @@ export default function SettingsPage() {
               onChange={(v) => setLocale(v as typeof locale)}
               options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.tag }))}
             />
+            <div>
+              <Choice
+                title="settings.textSize.label"
+                value={String(s.textScale ?? 1)}
+                onChange={(v) => saveSettings({ textScale: Number(v) })}
+                options={[
+                  { value: "1", label: t("settings.textSize.default") },
+                  { value: "1.15", label: t("settings.textSize.large") },
+                  { value: "1.3", label: t("settings.textSize.larger") },
+                ]}
+              />
+              <p className="mt-2 text-[0.9rem] text-ink-3">{t("settings.textSize.hint")}</p>
+            </div>
             <section>
               <SectionTitle k="settings.group.display" />
               <div className="mt-3 divide-y divide-surface card">
@@ -147,6 +160,12 @@ export default function SettingsPage() {
               <SectionTitle k="settings.group.scanning" />
               <div className="mt-3 divide-y divide-surface card">
                 <Toggle label="settings.autoCrop.label" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
+                <Toggle
+                  label="settings.samples.label"
+                  help="settings.samples.hint"
+                  checked={s.showSamples !== false}
+                  onChange={(v) => saveSettings({ showSamples: v })}
+                />
               </div>
             </section>
           </div>

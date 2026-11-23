@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ScanFab } from "@/components/ScanFab";
 import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { inputClass } from "@/components/ui/Field";
@@ -166,7 +167,10 @@ export default function ApplicationsPage() {
             )}
           </>
         )}
+        {/* room so the floating Scan button never covers the last item */}
+        <div aria-hidden className="h-20" />
       </Screen>
+      <ScanFab />
       <BottomNav />
     </>
   );
