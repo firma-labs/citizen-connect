@@ -1,4 +1,4 @@
-import { BlobError, BlobPreconditionFailedError, del, get, list, put } from "@vercel/blob";
+import { BlobError, BlobPreconditionFailedError, del, get, head, list, put } from "@vercel/blob";
 import type { Application } from "@/lib/types";
 import { StoreBusyError, type AiReadResult, type PageBlob, type Store } from "./types";
 
@@ -32,21 +32,87 @@ const backoff = (attempt: number) =>
   new Promise((r) => setTimeout(r, attempt < 5 ? Math.random() * 40 * (attempt + 1) : 250 + Math.random() * 250));
 
 
-async function read(path: string): Promise<{ bytes: Uint8Array; contentType: string; etag: string } | null> {
+/**
+ * A compressed response can carry a weak ETag (W/"…"), which never satisfies a
+ * conditional write. The version it names is the same, so drop the W/ marker.
+ */
+const strongEtag = (etag: string) => etag.replace(/^W\//, "");
+
+interface ReadResult {
+  bytes: Uint8Array;
+  contentType: string;
+  etag: string;
+  /** From Last-Modified (whole seconds), or null when the response had none. */
+  uploadedAt: number | null;
+}
+
+async function read(path: string): Promise<ReadResult | null> {
   try {
     const r = await get(path, { access: ACCESS, useCache: false });
     if (!r || r.statusCode !== 200 || !r.stream) return null;
     const bytes = new Uint8Array(await new Response(r.stream).arrayBuffer());
-    return { bytes, contentType: r.blob.contentType ?? "application/octet-stream", etag: r.blob.etag };
+    return {
+      bytes,
+      contentType: r.blob.contentType ?? "application/octet-stream",
+      etag: strongEtag(r.blob.etag),
+      uploadedAt: r.headers.get("last-modified") ? r.blob.uploadedAt.getTime() : null,
+    };
   } catch (e) {
     if (e instanceof BlobError && /not ?found/i.test(e.message)) return null;
     throw e;
   }
 }
 
-async function readJson<T>(path: string): Promise<{ data: T; etag: string } | null> {
+interface Versioned<T> {
+  data: T;
+  etag: string;
+  size: number;
+  uploadedAt: number | null;
+}
+
+async function readJson<T>(path: string): Promise<Versioned<T> | null> {
   const r = await read(path);
-  return r ? { data: JSON.parse(new TextDecoder().decode(r.bytes)) as T, etag: r.etag } : null;
+  return r
+    ? { data: JSON.parse(new TextDecoder().decode(r.bytes)) as T, etag: r.etag, size: r.bytes.byteLength, uploadedAt: r.uploadedAt }
+    : null;
+}
+
+/**
+ * Write `data` only if the file is still the version `cur` was read from.
+ * If the store refuses the ETag from the read, ask the store's metadata (head)
+ * for the file's current ETag: when size and upload time show it is the same
+ * version the read returned, retry once with that ETag. If it is a newer
+ * version, someone else saved in between, and the caller re-reads.
+ * Returns false when the caller should re-read and try again.
+ */
+let explained = false;
+async function writeIfUnchanged(path: string, cur: Versioned<unknown>, data: unknown): Promise<boolean> {
+  try {
+    await writeJson(path, data, { ifMatch: cur.etag });
+    return true;
+  } catch (e) {
+    if (!conflict(e)) throw e;
+  }
+  const meta = await head(path).catch(() => null);
+  if (!meta) return false;
+  const metaEtag = strongEtag(meta.etag);
+  const sameVersion =
+    meta.size === cur.size && cur.uploadedAt !== null && Math.floor(meta.uploadedAt.getTime() / 1000) === Math.floor(cur.uploadedAt / 1000);
+  if (!explained) {
+    explained = true; // once per instance: what the read and the metadata said
+    console.warn(
+      `blob conditional write refused for ${path}: read etag ${cur.etag} size ${cur.size} at ${cur.uploadedAt}; ` +
+        `head etag ${meta.etag} size ${meta.size} at ${meta.uploadedAt.getTime()}; same version: ${sameVersion}`,
+    );
+  }
+  if (!sameVersion || metaEtag === cur.etag) return false;
+  try {
+    await writeJson(path, data, { ifMatch: metaEtag });
+    return true;
+  } catch (e) {
+    if (!conflict(e)) throw e;
+    return false;
+  }
 }
 
 // What this instance last wrote to each JSON file, with the ETag the store gave
@@ -56,20 +122,21 @@ async function readJson<T>(path: string): Promise<{ data: T; etag: string } | nu
 // Updates first try from this copy: if nobody else has written since, its ETag
 // matches and the write goes through; if someone has, the write is refused
 // (ifMatch) and the next attempt reads the store instead.
-const written = new Map<string, { etag: string; data: unknown }>();
+const written = new Map<string, { etag: string; data: unknown; size: number; uploadedAt: number }>();
 
 /** The newest version to update from: the store's, or this instance's own later write. */
-async function readForUpdate<T>(path: string, attempt: number): Promise<{ data: T; etag: string } | null> {
+async function readForUpdate<T>(path: string, attempt: number): Promise<Versioned<T> | null> {
   const cur = await readJson<T>(path);
   const mine = written.get(path);
   // Only when the file still exists: never bring back one that was deleted meanwhile.
-  if (cur && mine && cur.etag !== mine.etag && attempt % 2 === 0) return { data: structuredClone(mine.data) as T, etag: mine.etag };
+  if (cur && mine && cur.etag !== mine.etag && attempt % 2 === 0) return { data: structuredClone(mine.data) as T, etag: mine.etag, size: mine.size, uploadedAt: mine.uploadedAt };
   return cur;
 }
 
 /** Write JSON. `create` fails if the file exists; `ifMatch` fails if it changed since read. */
 async function writeJson(path: string, data: unknown, opts: { create?: boolean; ifMatch?: string }) {
-  const r = await put(path, JSON.stringify(data), {
+  const body = JSON.stringify(data);
+  const r = await put(path, body, {
     access: ACCESS,
     contentType: "application/json",
     addRandomSuffix: false,
@@ -77,7 +144,12 @@ async function writeJson(path: string, data: unknown, opts: { create?: boolean; 
     ifMatch: opts.ifMatch,
     cacheControlMaxAge: 60,
   });
-  written.set(path, { etag: r.etag, data: structuredClone(data) });
+  written.set(path, {
+    etag: strongEtag(r.etag),
+    data: structuredClone(data),
+    size: new TextEncoder().encode(body).byteLength,
+    uploadedAt: Date.now(),
+  });
   invalidate();
 }
 
@@ -125,7 +197,7 @@ async function listFresh(): Promise<Application[]> {
   let cursor: string | undefined;
   do {
     const page = await list({ prefix: "applications/", limit: 1000, cursor });
-    found.push(...page.blobs.map((b) => ({ pathname: b.pathname, etag: b.etag })));
+    found.push(...page.blobs.map((b) => ({ pathname: b.pathname, etag: strongEtag(b.etag) })));
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
 
@@ -174,16 +246,8 @@ export const blobStore: Store = {
       const next = fn(structuredClone(cur.data));
       if (!next) return cur.data;
       next.updated_at = new Date().toISOString();
-      try {
-        await writeJson(appPath(token), next, { ifMatch: cur.etag });
-        return next;
-      } catch (e) {
-        if (conflict(e)) {
-          await backoff(attempt); // someone else saved first — re-read and re-apply
-          continue;
-        }
-        throw e;
-      }
+      if (await writeIfUnchanged(appPath(token), cur, next)) return next;
+      await backoff(attempt); // someone else saved first — re-read and re-apply
     }
     throw new StoreBusyError(`update conflict on ${token}`);
   },
@@ -235,16 +299,18 @@ export const blobStore: Store = {
       if (totalLimit > 0 && total >= totalLimit) return { ok: false, reason: "total" };
       const used = counts[user] ?? 0;
       if (used >= userLimit) return { ok: false, reason: "user" };
-      try {
-        await writeJson(usagePath(day), { ...counts, [user]: used + 1 }, cur ? { ifMatch: cur.etag } : { create: true });
-        return { ok: true, used: used + 1 };
-      } catch (e) {
-        if (conflict(e)) {
-          await backoff(attempt); // another reading took a slot at the same moment
-          continue;
+      const next = { ...counts, [user]: used + 1 };
+      if (cur) {
+        if (await writeIfUnchanged(usagePath(day), cur, next)) return { ok: true, used: used + 1 };
+      } else {
+        try {
+          await writeJson(usagePath(day), next, { create: true });
+          return { ok: true, used: used + 1 };
+        } catch (e) {
+          if (!conflict(e)) throw e;
         }
-        throw e;
       }
+      await backoff(attempt); // another reading took a slot at the same moment
     }
     throw new StoreBusyError("AI usage counter is busy — try again");
   },
