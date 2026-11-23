@@ -76,6 +76,11 @@ export async function syncNow(): Promise<void> {
 
 async function call(url: string, init?: RequestInit) {
   const res = await fetch(url, { ...init, cache: "no-store" });
+  if (res.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
+    // Signed out or session expired. Queued scans stay in IndexedDB and upload after sign-in.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- outside React; a full load restarts sync signed in
+    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+  }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? `${res.status} ${res.statusText}`);
   return body;

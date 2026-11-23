@@ -5,16 +5,23 @@
  * - /api/*: never cached — capture data lives in IndexedDB and is synced by the app.
  */
 const DEV = new URL(self.location.href).searchParams.get("dev") === "1";
-const VERSION = "cc-v1";
+const VERSION = "cc-v2";
 const SHELL = `${VERSION}-shell`;
 const STATIC = `${VERSION}-static`;
-const SHELL_ROUTES = ["/", "/capture", "/queue", "/verify", "/track", "/settings", "/offline"];
+const SHELL_ROUTES = ["/", "/capture", "/queue", "/verify", "/track", "/settings", "/offline", "/login"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(SHELL)
-      .then((c) => Promise.allSettled(SHELL_ROUTES.map((r) => c.add(new Request(r, { cache: "reload" })))))
+      .then((c) =>
+        Promise.allSettled(
+          SHELL_ROUTES.map(async (r) => {
+            const res = await fetch(new Request(r, { cache: "reload" }));
+            if (res.ok && !res.redirected) await c.put(r, res);
+          }),
+        ),
+      )
       .then(() => self.skipWaiting()),
   );
 });
@@ -36,7 +43,8 @@ async function networkFirst(request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
   try {
     const res = await fetch(request);
-    if (res.ok && res.type === "basic") cache.put(request, res.clone());
+    // Never store a redirect (e.g. to /login when signed out) under the page's own URL.
+    if (res.ok && res.type === "basic" && !res.redirected) cache.put(request, res.clone());
     return res;
   } catch (err) {
     const hit = (await cache.match(request, { ignoreSearch: request.mode === "navigate" })) ||

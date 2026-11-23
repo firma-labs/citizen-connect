@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { VerifiedFields } from "@/lib/types";
+import { auditName, sessionFromRequest } from "@/lib/server/auth";
 import { VerifyError, verifyApplication } from "@/lib/server/pipeline";
 import { errorJson, json, parseToken, publicOrigin } from "@/lib/server/http";
 
@@ -11,7 +12,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/applications/[t
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorJson(400, parsed.error.message);
   try {
-    const app = await verifyApplication(token, parsed.data.fields, parsed.data.staff, publicOrigin(req));
+    const session = sessionFromRequest(req);
+    const app = await verifyApplication(token, parsed.data.fields, session ? auditName(session) : parsed.data.staff, publicOrigin(req));
     return json({ application: app });
   } catch (e) {
     if (e instanceof VerifyError) return errorJson(409, e.message);

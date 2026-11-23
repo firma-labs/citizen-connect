@@ -9,6 +9,15 @@ import type { PageBlob, Store } from "./types";
 const ROOT = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.LOCAL_DATA_DIR ?? ".data");
 const APPS = path.join(ROOT, "applications");
 const PAGES = path.join(ROOT, "pages");
+const USAGE = path.join(ROOT, "ai-usage.json");
+
+async function readUsage(): Promise<Record<string, number>> {
+  try {
+    return JSON.parse(await fs.readFile(USAGE, "utf8"));
+  } catch {
+    return {};
+  }
+}
 
 const safe = (token: string) => token.replace(/[^A-Z0-9-]/gi, "");
 const appFile = (token: string) => path.join(APPS, `${safe(token)}.json`);
@@ -76,6 +85,19 @@ export const localStore: Store = {
     await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.writeFile(file, page.bytes);
     await fs.writeFile(`${file}.type`, page.contentType);
+  },
+  takeAiRead: (day, limit) =>
+    withLock("__ai-usage__", async () => {
+      const usage = await readUsage();
+      const used = usage[day] ?? 0;
+      if (used >= limit) return null;
+      usage[day] = used + 1;
+      await fs.mkdir(ROOT, { recursive: true });
+      await fs.writeFile(USAGE, JSON.stringify(usage, null, 2));
+      return used + 1;
+    }),
+  async aiReadsOn(day) {
+    return (await readUsage())[day] ?? 0;
   },
   async getPage(token, idx): Promise<PageBlob | null> {
     const file = pageFile(token, idx);

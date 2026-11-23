@@ -3,6 +3,7 @@ import { dept } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
 import type { Application, AuditEntry, VerifiedFields } from "@/lib/types";
 import { AIError, getReader, getReasoner, type PageImage } from "./ai";
+import { AI_DAILY_LIMIT, takeAiRead } from "./quota";
 import { getSmsSender, tokenSms } from "./sms";
 import { getStore } from "./store";
 
@@ -27,6 +28,7 @@ export async function claimRead(token: string, force = false): Promise<boolean> 
     a.status = "reading";
     a.read_started_at = new Date().toISOString();
     a.read_error = null;
+    a.read_error_code = null;
     return a;
   });
   return claimed;
@@ -50,6 +52,20 @@ export async function runRead(token: string): Promise<void> {
 
     const reader = getReader();
     const reasoner = getReasoner();
+
+    // Spend from today's AI allowance before any model call (the mock engine is free).
+    if ((reader.id !== "mock" || reasoner.id !== "mock") && !(await takeAiRead())) {
+      await store.update(token, (a) => {
+        if ((a.pages_version ?? 0) !== version) return null;
+        a.status = "read_failed";
+        a.read_error = `Daily AI limit reached (${AI_DAILY_LIMIT} readings). Enter the details by hand, or read again tomorrow.`;
+        a.read_error_code = "daily_limit";
+        a.audit.push({ at: new Date().toISOString(), by: "system", action: "ai_daily_limit_reached" });
+        return a;
+      });
+      return;
+    }
+
     const t0 = Date.now();
     const read = await reader.read(pages);
     const t1 = Date.now();
@@ -73,6 +89,7 @@ export async function runRead(token: string): Promise<void> {
       if ((a.pages_version ?? 0) !== version) return null; // pages were rescanned meanwhile — discard this read
       a.status = "read";
       a.read_error = null;
+      a.read_error_code = null;
       a.extraction = {
         reader: read,
         reasoner: reasoned,
@@ -90,6 +107,7 @@ export async function runRead(token: string): Promise<void> {
       if (a.status !== "reading" || (version >= 0 && (a.pages_version ?? 0) !== version)) return null; // rescanned meanwhile
       a.status = "read_failed";
       a.read_error = message;
+      a.read_error_code = null;
       a.audit.push({ at: new Date().toISOString(), by: "system", action: "ai_read_failed", to: message });
       return a;
     });

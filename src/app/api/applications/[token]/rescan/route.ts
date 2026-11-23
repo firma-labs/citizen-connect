@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { auditName, sessionFromRequest } from "@/lib/server/auth";
 import { VerifyError, startRescan } from "@/lib/server/pipeline";
 import { errorJson, json, parseToken } from "@/lib/server/http";
 
@@ -11,7 +12,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/applications/[t
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorJson(400, parsed.error.message);
   try {
-    const app = await startRescan(token, parsed.data.page_count, parsed.data.staff);
+    const session = sessionFromRequest(req);
+    const app = await startRescan(token, parsed.data.page_count, session ? auditName(session) : parsed.data.staff);
     if (!app) return errorJson(404, "not found");
     return json({ pages_version: app.pages_version, page_count: app.page_count });
   } catch (e) {

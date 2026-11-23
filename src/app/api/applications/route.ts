@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { z } from "zod";
 import { VENUES } from "@/lib/reference";
+import { auditName, sessionFromRequest } from "@/lib/server/auth";
 import { getStore } from "@/lib/server/store";
 import { errorJson, json, parseToken } from "@/lib/server/http";
 import type { Application } from "@/lib/types";
@@ -26,11 +27,14 @@ export async function POST(req: Request) {
   const token = parseToken(parsed.data.token);
   if (!token) return errorJson(400, "invalid token format");
   const now = new Date().toISOString();
+  // Signed-in identity wins over the name typed on the device.
+  const session = sessionFromRequest(req);
+  const capturedBy = session ? auditName(session) : (parsed.data.captured_by ?? null);
   const app: Application = {
     token,
     venue: parsed.data.venue,
     captured_at: parsed.data.captured_at,
-    captured_by: parsed.data.captured_by ?? null,
+    captured_by: capturedBy,
     page_count: parsed.data.page_count,
     pages_received: [],
     status: "captured",
@@ -43,7 +47,7 @@ export async function POST(req: Request) {
     sla_due_at: null,
     closing_remark: null,
     sms: [],
-    audit: [{ at: now, by: parsed.data.captured_by ?? "device", action: "token_issued" }],
+    audit: [{ at: now, by: capturedBy ?? "device", action: "token_issued" }],
     updated_at: now,
   };
   const stored = await getStore().createIfAbsent(app);

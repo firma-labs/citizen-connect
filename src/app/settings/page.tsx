@@ -15,7 +15,8 @@ export default function SettingsPage() {
   const { t, hint, locale, setLocale } = useI18n();
   const [staff, setStaff] = useState("");
   const [savedName, setSavedName] = useState(false);
-  const [health, setHealth] = useState<Record<string, string> | null | undefined>(undefined);
+  const [health, setHealth] = useState<{ store: string; reader: string; reasoner: string; sms: string; ai_today?: { used: number; limit: number } } | null | undefined>(undefined);
+  const [me, setMe] = useState<{ mode: string; signedIn: boolean; mobile: string | null; name: string | null } | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- seed the input once settings load from storage
@@ -23,6 +24,10 @@ export default function SettingsPage() {
   }, [hydrated, s.staff]);
 
   useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setMe)
+      .catch(() => setMe(null));
     fetch("/api/health", { cache: "no-store" })
       .then((r) => r.json())
       .then(setHealth)
@@ -33,7 +38,26 @@ export default function SettingsPage() {
     <>
       <AppBar />
       <Screen>
-        <h1 className="mb-6 text-[1.7rem] font-extrabold">{t("settings.title")}</h1>
+        <h1 className="mb-6 text-[1.7rem] font-bold tracking-tight">{t("settings.title")}</h1>
+
+        {me?.signedIn && (
+          <div className="card mb-8 flex items-center justify-between gap-3 bg-gradient-to-br from-indigo-50 via-white to-white p-4">
+            <div className="min-w-0">
+              <p className="text-[0.85rem] text-ink-3">{t("settings.account")}</p>
+              <p className="truncate font-semibold">{me.name ?? me.mobile}</p>
+              {me.name && <p className="text-[0.9rem] text-ink-3">+91 {me.mobile}</p>}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+                window.location.replace("/login");
+              }}
+            >
+              {t("settings.signOut")}
+            </Button>
+          </div>
+        )}
 
         <form
           className="space-y-3"
@@ -99,6 +123,7 @@ export default function SettingsPage() {
                   ["settings.reader", health?.reader],
                   ["settings.reasoner", health?.reasoner],
                   ["settings.sms", health?.sms],
+                  ["settings.aiToday", health?.ai_today ? `${health.ai_today.used} / ${health.ai_today.limit}` : undefined],
                 ] as [MessageKey, string | undefined][]
               ).map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-4 px-4 py-3">

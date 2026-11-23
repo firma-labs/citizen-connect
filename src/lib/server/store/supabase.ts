@@ -92,6 +92,17 @@ export const supabaseStore: Store = {
       .upload(pagePath(token, idx), page.bytes, { contentType: page.contentType, upsert: true });
     if (error) throw error;
   },
+  async takeAiRead(day, limit) {
+    // Atomic in Postgres (see 0002_ai_usage.sql): concurrent serverless calls can't overshoot.
+    const { data, error } = await db().rpc("take_ai_read", { p_day: day, p_limit: limit });
+    if (error) throw error;
+    return typeof data === "number" && data > 0 ? data : null;
+  },
+  async aiReadsOn(day) {
+    const { data, error } = await db().from("ai_usage").select("reads").eq("day", day).maybeSingle();
+    if (error) throw error;
+    return (data?.reads as number | undefined) ?? 0;
+  },
   async getPage(token, idx): Promise<PageBlob | null> {
     const { data, error } = await db().storage.from(BUCKET).download(pagePath(token, idx));
     if (error) {

@@ -327,12 +327,21 @@ function Verify() {
             )}
 
             {!rescanning && status === "read_failed" && !form && (
-              <Notice tone="error" title={t("verify.failed.title")}>
-                <p>{app?.read_error}</p>
+              <Notice
+                tone={app?.read_error_code === "daily_limit" ? "attention" : "error"}
+                title={t(app?.read_error_code === "daily_limit" ? "verify.limit.title" : "verify.failed.title")}
+              >
+                <p>
+                  {app?.read_error_code === "daily_limit"
+                    ? t("verify.limit.body", { n: Number(/\((\d+)/.exec(app.read_error ?? "")?.[1] ?? 20) })
+                    : app?.read_error}
+                </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button icon="refresh" onClick={() => void requestRead(token).then(load)}>
-                    {t("verify.failed.retry")}
-                  </Button>
+                  {app?.read_error_code !== "daily_limit" && (
+                    <Button icon="refresh" onClick={() => void requestRead(token).then(load)}>
+                      {t("verify.failed.retry")}
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     onClick={() => {

@@ -19,4 +19,11 @@ export interface Store {
   list(limit?: number): Promise<Application[]>;
   putPage(token: string, idx: number, page: PageBlob): Promise<void>;
   getPage(token: string, idx: number): Promise<PageBlob | null>;
+  /**
+   * Atomically take one AI reading from today's allowance. Returns the count
+   * after taking it, or null when the limit is already reached.
+   */
+  takeAiRead(day: string, limit: number): Promise<number | null>;
+  /** AI readings used on a day. */
+  aiReadsOn(day: string): Promise<number>;
 }

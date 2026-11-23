@@ -143,6 +143,8 @@ export interface Application {
   status: ApplicationStatus;
   read_started_at: string | null;
   read_error: string | null;
+  /** Machine-readable reason, so the UI can explain it in the user's language. */
+  read_error_code?: "daily_limit" | null;
   extraction: Extraction | null;
   verified: VerifiedFields | null;
   verified_at: string | null;
