@@ -2,29 +2,32 @@
 
 import { useI18n, type MessageKey } from "@/lib/i18n";
 
-// Each status takes the pastel family of what it means (see globals.css).
-const TONES: Record<string, string> = {
-  draft: "bg-paper text-ink-2",
-  queued: "bg-marigold-50 text-marigold-700",
-  captured: "bg-sky-50 text-sky-700",
-  reading: "bg-sky-50 text-sky-700",
-  read: "bg-marigold-50 text-marigold-700",
-  read_failed: "bg-red-50 text-red-700",
-  routed: "bg-mint-50 text-mint-700",
-  in_progress: "bg-indigo-50 text-indigo-800",
-  closed: "bg-ink text-white",
+// Each status takes the pastel family of what it means (see globals.css):
+// sky = with the department, violet = being worked on, mint = resolved,
+// peach = needs a person here, rose = failed or overdue.
+const TONES: Record<string, { tag: string; dot: string }> = {
+  draft: { tag: "bg-paper text-ink-2", dot: "bg-current opacity-60" },
+  queued: { tag: "bg-marigold-50 text-marigold-700", dot: "bg-marigold-500" },
+  captured: { tag: "bg-sky-50 text-sky-700", dot: "bg-current opacity-60" },
+  reading: { tag: "bg-sky-50 text-sky-700", dot: "animate-pulse bg-sky-500" },
+  read: { tag: "bg-marigold-50 text-marigold-700", dot: "bg-marigold-500" },
+  read_failed: { tag: "bg-red-50 text-red-700", dot: "bg-red-500" },
+  routed: { tag: "bg-sky-50 text-sky-700", dot: "bg-sky-500" },
+  acknowledged: { tag: "bg-sky-50 text-sky-700", dot: "bg-sky-500" },
+  in_progress: { tag: "bg-indigo-50 text-indigo-800", dot: "bg-indigo-600" },
+  closed: { tag: "bg-mint-50 text-mint-700", dot: "bg-mint-500" },
+  overdue: { tag: "bg-red-50 text-red-700", dot: "bg-red-500" },
 };
 
-export function StatusTag({ status }: { status: string }) {
+/** Status chip. `overdue` marks an open application past its department's response time. */
+export function StatusTag({ status, overdue = false }: { status: string; overdue?: boolean }) {
   const { t } = useI18n();
-  const key = `status.${status}` as MessageKey;
+  const tone = TONES[overdue ? "overdue" : status] ?? TONES.draft;
+  const label = t(`status.${status}` as MessageKey);
   return (
-    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-[0.85rem] font-semibold leading-none ${TONES[status] ?? TONES.draft}`}>
-      <span
-        className={`h-2 w-2 rounded-full ${status === "reading" ? "animate-pulse bg-sky-500" : status === "routed" ? "bg-mint-500" : status === "read" || status === "queued" ? "bg-marigold-500" : status === "read_failed" ? "bg-red-500" : status === "closed" ? "bg-white" : "bg-current opacity-60"}`}
-        aria-hidden
-      />
-      {t(key)}
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-[0.85rem] font-semibold leading-none ${tone.tag}`}>
+      <span className={`h-2 w-2 rounded-full ${tone.dot}`} aria-hidden />
+      {overdue ? t("status.overdue", { status: label }) : label}
     </span>
   );
 }

@@ -11,11 +11,11 @@ import { getDraft, subscribe, type LocalApplication } from "@/lib/client/db";
 import { officeSummary, useOfficeApplications } from "@/lib/client/office";
 import { useSettings } from "@/lib/client/settings";
 import { useI18n, type MessageKey } from "@/lib/i18n";
-import { refLabel, venue } from "@/lib/reference";
+import { VenuePicker } from "@/components/VenuePicker";
 
 export default function Home() {
   const [settings, hydrated] = useSettings();
-  const { t, date, num: nf, locale } = useI18n();
+  const { t, date, num: nf } = useI18n();
   const [draft, setDraft] = useState<LocalApplication | undefined>();
   // Office-wide counts (every phone), the same numbers the Queue shows.
   const { local, server } = useOfficeApplications();
@@ -31,8 +31,6 @@ export default function Home() {
     refresh().catch(() => {});
     return subscribe(() => void refresh().catch(() => {}));
   }, []);
-
-  const v = venue(settings.venue);
 
   return (
     <>
@@ -51,7 +49,10 @@ export default function Home() {
             {t("home.today")}
             {now && <> · {date(now, { weekday: "long", day: "numeric", month: "long" })}</>}
           </p>
-          <h1 className="mt-0.5 text-[2.1rem] font-bold tracking-tight">{hydrated ? refLabel(v, locale) : " "}</h1>
+          {/* The venue is part of today's session: pick it here (and on Scan), not in Settings. */}
+          <h1 className="mt-0.5">
+            <VenuePicker large />
+          </h1>
           <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
             <StatTile tone="sky" value={nf(now ? office.today : 0)} label={t("home.stat.today")} />
             <StatTile tone="peach" value={nf(office.notUploaded)} label={t("home.stat.toSync")} />
@@ -74,6 +75,8 @@ export default function Home() {
 
         <ul className="mt-6 divide-y divide-surface overflow-hidden card">
           <Row href="/queue" icon="list" label="home.queue" count={office.toCheck} chip="bg-sky-50 text-sky-700" />
+          <Row href="/applications" icon="folder" label="home.applications" chip="bg-mint-50 text-mint-700" />
+          <Row href="/dashboard" icon="chart" label="home.dashboard" chip="bg-marigold-50 text-marigold-700" />
           <Row href="/track" icon="search" label="home.track" chip="bg-indigo-50 text-indigo-800" />
         </ul>
       </Screen>

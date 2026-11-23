@@ -1,9 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicBedrock } from "@anthropic-ai/bedrock-sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
 import { ReaderOutput, ReasonerOutput } from "@/lib/types";
-import { READER_SYSTEM, REASONER_SYSTEM } from "./prompts";
-import type { PageImage, Reader, Reasoner } from "./types";
+import { BRIEFER_SYSTEM, READER_SYSTEM, REASONER_SYSTEM } from "./prompts";
+import type { Briefer, Briefing, BriefingInput, PageImage, Reader, Reasoner } from "./types";
 
 // Claude via either the Claude API (pilot, mock letters) or Amazon Bedrock
 // (production). PRD §7.2: production must use the India geo cross-Region
@@ -116,3 +117,33 @@ export class ClaudeReasoner implements Reasoner {
     }
   }
 }
+
+const BriefingOutput = z.object({
+  en: z.string().describe("English briefing, bullet points starting with •"),
+  mr: z.string().describe("Marathi briefing in Devanagari, bullet points starting with •"),
+});
+
+export class ClaudeBriefer implements Briefer {
+  readonly id: string;
+  constructor(private cfg: ClaudeConfig) {
+    this.id = `${cfg.provider}:${cfg.model}`;
+  }
+
+  async brief(input: BriefingInput): Promise<Briefing> {
+    try {
+      const msg = await getClient(this.cfg.provider).messages.parse({
+        model: this.cfg.model,
+        max_tokens: 6000,
+        system: BRIEFER_SYSTEM,
+        messages: [{ role: "user", content: JSON.stringify(input) }],
+        output_config: { effort: this.cfg.effort, format: zodOutputFormat(BriefingOutput) },
+      });
+      checkStop(msg, "Briefing");
+      if (!msg.parsed_output) throw new AIError("Briefing: response did not match the expected format");
+      return msg.parsed_output;
+    } catch (e) {
+      describeError(e, "Briefing");
+    }
+  }
+}
+

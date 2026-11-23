@@ -96,11 +96,16 @@ function readSheet(file) {
   return data;
 }
 
-/** Rows of an existing sheet that differ from messages/*.json or carry reviewer notes. */
-function pendingEdits(file, flat) {
+/** Snapshot of what was exported, kept next to the sheet: tells reviewer edits apart from later changes in the code. */
+const baselineOf = (file) => file.replace(/\.csv$/, "") + ".exported.json";
+
+/** Rows a reviewer changed (versus what was exported) or left a note on. */
+function pendingEdits(file) {
   try {
+    const base = existsSync(baselineOf(file)) ? JSON.parse(readFileSync(baselineOf(file), "utf8")) : null;
+    if (!base) return 0; // sheet from before snapshots existed: treat as unedited
     return readSheet(file).filter(
-      (row) => row["reviewer notes"]?.trim() || LOCALES.some((l) => (row[column(l)] ?? "").trim() !== (flat[l][row.key] ?? "")),
+      (row) => row["reviewer notes"]?.trim() || LOCALES.some((l) => (row[column(l)] ?? "").trim() !== (base[l]?.[row.key] ?? "").trim()),
     ).length;
   } catch {
     return 1; // unreadable — don't overwrite it either
@@ -110,10 +115,10 @@ function pendingEdits(file, flat) {
 function exportSheet(file = DEFAULT_SHEET, { build = false } = {}) {
   const flat = Object.fromEntries(LOCALES.map((l) => [l, flatten(read(l))]));
   if (build && existsSync(file)) {
-    const pending = pendingEdits(file, flat);
+    const pending = pendingEdits(file);
     if (pending) {
       console.warn(
-        `Kept ${file}: ${pending} row(s) have reviewer edits or notes. Import the edits (npm run i18n:import -- ${file}), then move or delete the file to get a fresh sheet.`,
+        `Kept ${file}: ${pending} row(s) have reviewer edits or notes not yet imported. Run npm run i18n:import -- ${file} (rows with only notes stay until the file is moved or deleted).`,
       );
       return;
     }
@@ -125,6 +130,7 @@ function exportSheet(file = DEFAULT_SHEET, { build = false } = {}) {
   }));
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, BOM + Papa.unparse(rows, { quotes: true, newline: "\r\n" }));
+  writeFileSync(baselineOf(file), JSON.stringify(flat));
   console.log(`Wrote ${rows.length} rows to ${file}. Reviewers edit the language columns (keep {placeholders} as they are) and add notes; then run: npm run i18n:import -- ${file}`);
 }
 
@@ -148,6 +154,8 @@ function importSheet(file) {
     }
   }
   for (const l of LOCALES) write(l, unflatten(flat[l], order));
+  // The sheet's edits are now in messages/: they no longer count as pending for the next build.
+  writeFileSync(baselineOf(file), JSON.stringify(flat));
   console.log(`Applied ${changed} change(s) from ${file}.`);
   check();
 }

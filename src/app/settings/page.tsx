@@ -8,11 +8,23 @@ import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { saveSettings, useSettings } from "@/lib/client/settings";
 import { LOCALES, useI18n, type MessageKey } from "@/lib/i18n";
-import { VENUES, refLabel } from "@/lib/reference";
 
+type Tab = "account" | "app" | "system";
+const TABS: { id: Tab; label: MessageKey }[] = [
+  { id: "account", label: "settings.tab.account" },
+  { id: "app", label: "settings.tab.app" },
+  { id: "system", label: "settings.tab.system" },
+];
+
+/**
+ * Settings in three groups (Material 3 tabs): who is signed in; how the app
+ * looks and scans on this phone; and the system check. The Darbar venue is not
+ * here — it belongs to the session and is chosen on Home and Scan.
+ */
 export default function SettingsPage() {
   const [s, hydrated] = useSettings();
   const { t, hint, locale, setLocale } = useI18n();
+  const [tab, setTab] = useState<Tab>("account");
   const [staff, setStaff] = useState("");
   const [savedName, setSavedName] = useState(false);
   const [health, setHealth] = useState<{ store: string; reader: string; reasoner: string; sms: string; ai_today?: { user: number; userLimit: number; total: number; totalLimit: number } } | null | undefined>(undefined);
@@ -38,112 +50,143 @@ export default function SettingsPage() {
     <>
       <AppBar />
       <Screen>
-        <h1 className="mb-6 text-[1.7rem] font-bold tracking-tight">{t("settings.title")}</h1>
+        <h1 className="mb-4 text-[1.7rem] font-bold tracking-tight">{t("settings.title")}</h1>
 
-        {me?.signedIn && (
-          <div className="card mb-8 flex items-center justify-between gap-3 p-4">
-            <div className="min-w-0">
-              <p className="text-[0.85rem] text-ink-3">{t("settings.account")}</p>
-              <p className="truncate font-semibold">{me.name ?? me.mobile}</p>
-              {me.name && <p className="text-[0.9rem] text-ink-3">+91 {me.mobile}</p>}
-            </div>
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
-                window.location.replace("/login");
-              }}
-            >
-              {t("settings.signOut")}
-            </Button>
+        {/* Material 3 primary tabs */}
+        <div role="tablist" aria-label={t("settings.title")} className="mb-6 grid grid-cols-3 border-b border-rule-strong">
+          {TABS.map((x) => {
+            const on = tab === x.id;
+            return (
+              <button
+                key={x.id}
+                role="tab"
+                id={`tab-${x.id}`}
+                aria-selected={on}
+                aria-controls={`panel-${x.id}`}
+                onClick={() => setTab(x.id)}
+                className={`relative min-h-12 px-2 font-semibold transition-colors ${on ? "text-primary" : "text-ink-3 hover:bg-ink/5 hover:text-ink"}`}
+              >
+                {t(x.label)}
+                {on && <span aria-hidden className="absolute inset-x-6 bottom-0 h-[3px] rounded-t-full bg-primary" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {tab === "account" && (
+          <div role="tabpanel" id="panel-account" aria-labelledby="tab-account" className="space-y-6">
+            {me?.signedIn && (
+              <div className="card flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="text-[0.85rem] text-ink-3">{t("settings.account")}</p>
+                  <p className="truncate font-semibold">{me.name ?? me.mobile}</p>
+                  {me.name && <p className="text-[0.9rem] text-ink-3">+91 {me.mobile}</p>}
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+                    window.location.replace("/login");
+                  }}
+                >
+                  {t("settings.signOut")}
+                </Button>
+              </div>
+            )}
+            {/* Without sign-in (local use), staff type the name recorded with their work. */}
+            {me && !me.signedIn && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveSettings({ staff: staff.trim() });
+                  setSavedName(true);
+                }}
+              >
+                <Field id="staff" label="settings.staff.label" hintKey="settings.staff.hint">
+                  <div className="flex gap-2">
+                    <input
+                      id="staff"
+                      value={staff}
+                      onChange={(e) => {
+                        setStaff(e.target.value);
+                        setSavedName(false);
+                      }}
+                      required
+                      autoComplete="name"
+                      className={inputClass()}
+                    />
+                    <Button type="submit" variant={savedName ? "secondary" : "primary"} icon={savedName ? "check" : undefined} className="shrink-0 whitespace-nowrap">
+                      {savedName ? t("settings.saved") : t("settings.save")}
+                    </Button>
+                  </div>
+                </Field>
+              </form>
+            )}
           </div>
         )}
 
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveSettings({ staff: staff.trim() });
-            setSavedName(true);
-          }}
-        >
-          <Field id="staff" label="settings.staff.label" hintKey="settings.staff.hint">
-            <div className="flex gap-2">
-              <input
-                id="staff"
-                value={staff}
-                onChange={(e) => {
-                  setStaff(e.target.value);
-                  setSavedName(false);
-                }}
-                required
-                autoComplete="name"
-                className={inputClass()}
-              />
-              <Button type="submit" variant={savedName ? "secondary" : "primary"} icon={savedName ? "check" : undefined} className="shrink-0 whitespace-nowrap">
-                {savedName ? t("settings.saved") : t("settings.save")}
-              </Button>
-            </div>
-          </Field>
-        </form>
+        {tab === "app" && (
+          <div role="tabpanel" id="panel-app" aria-labelledby="tab-app" className="space-y-8">
+            <Choice
+              title="settings.language"
+              value={locale}
+              onChange={(v) => setLocale(v as typeof locale)}
+              options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.tag }))}
+            />
+            <section>
+              <SectionTitle k="settings.group.display" />
+              <div className="mt-3 divide-y divide-surface card">
+                {locale !== "en" ? (
+                  <Toggle label="settings.hints.label" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />
+                ) : (
+                  <p className="px-4 py-4 text-[0.92rem] text-ink-3">{t("settings.hints.englishOnly")}</p>
+                )}
+              </div>
+            </section>
+            <section>
+              <SectionTitle k="settings.group.scanning" />
+              <div className="mt-3 divide-y divide-surface card">
+                <Toggle label="settings.autoCrop.label" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
+              </div>
+            </section>
+          </div>
+        )}
 
-        <Choice
-          className="mt-8"
-          title="settings.venue"
-          value={s.venue}
-          onChange={(v) => saveSettings({ venue: v })}
-          options={VENUES.map((v) => ({ value: v.code, label: refLabel(v, locale) }))}
-        />
-
-        <Choice
-          className="mt-8"
-          title="settings.language"
-          value={locale}
-          onChange={(v) => setLocale(v as typeof locale)}
-          options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.tag }))}
-        />
-
-        <div className="mt-8 divide-y divide-surface card">
-          {locale !== "en" && <Toggle label="settings.hints.label" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />}
-          <Toggle label="settings.autoCrop.label" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
-        </div>
-
-        <section className="mt-10">
-          <SectionTitle k="settings.system" />
-          {health === null ? (
-            <Notice tone="attention" className="mt-3">
-              {t("settings.offline")}
-            </Notice>
-          ) : (
-            <dl className="mt-3 divide-y divide-surface card">
-              {(
-                [
-                  ["settings.store", health?.store],
-                  ["settings.reader", health?.reader],
-                  ["settings.reasoner", health?.reasoner],
-                  ["settings.sms", health?.sms],
-                  ["settings.aiToday", health?.ai_today ? `${health.ai_today.user} / ${health.ai_today.userLimit}` : undefined],
+        {tab === "system" && (
+          <section role="tabpanel" id="panel-system" aria-labelledby="tab-system">
+            {health === null ? (
+              <Notice tone="attention">{t("settings.offline")}</Notice>
+            ) : (
+              <dl className="divide-y divide-surface card">
+                {(
                   [
-                    "settings.aiTotal",
-                    health?.ai_today ? `${health.ai_today.total}${health.ai_today.totalLimit ? ` / ${health.ai_today.totalLimit}` : ""}` : undefined,
-                  ],
-                ] as [MessageKey, string | undefined][]
-              ).map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-4 px-4 py-3">
-                  <dt className="text-ink-2">
-                    {t(k)}
-                    {hint(k) && <span className="block text-[0.8rem] text-ink-3">{hint(k)}</span>}
-                  </dt>
-                  <dd className="break-all text-right font-semibold">{v ?? "…"}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          <p className="mt-3 flex items-start gap-2 text-[0.9rem] text-ink-3">
-            <Icon name="info" size={18} className="mt-0.5" />
-            {t("settings.pilot")}
-          </p>
-        </section>
+                    ["settings.store", health?.store],
+                    ["settings.reader", health?.reader],
+                    ["settings.reasoner", health?.reasoner],
+                    ["settings.sms", health?.sms],
+                    ["settings.aiToday", health?.ai_today ? `${health.ai_today.user} / ${health.ai_today.userLimit}` : undefined],
+                    [
+                      "settings.aiTotal",
+                      health?.ai_today ? `${health.ai_today.total}${health.ai_today.totalLimit ? ` / ${health.ai_today.totalLimit}` : ""}` : undefined,
+                    ],
+                  ] as [MessageKey, string | undefined][]
+                ).map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-4 px-4 py-3">
+                    <dt className="text-ink-2">
+                      {t(k)}
+                      {hint(k) && <span className="block text-[0.8rem] text-ink-3">{hint(k)}</span>}
+                    </dt>
+                    <dd className="break-all text-right font-semibold">{v ?? "…"}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            <p className="mt-3 flex items-start gap-2 text-[0.9rem] text-ink-3">
+              <Icon name="info" size={18} className="mt-0.5" />
+              {t("settings.pilot")}
+            </p>
+          </section>
+        )}
       </Screen>
       <BottomNav />
     </>

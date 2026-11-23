@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { listApps, subscribe, type LocalApplication } from "./db";
-import type { ArchiveRecord } from "@/lib/types";
+import type { ArchiveRecord, VerifiedFields } from "@/lib/types";
 import { onSyncState } from "./sync";
 
 export interface ServerRow {
@@ -17,7 +17,13 @@ export interface ServerRow {
   page_count: number;
   read_error: string | null;
   summary_en: string | null;
-  verified: { department: string } | null;
+  verified: VerifiedFields | null;
+  verified_at?: string | null;
+  sla_due_at?: string | null;
+  resolved_at?: string | null;
+  resolved_on_spot?: boolean;
+  reminders_sent?: number;
+  venue: string;
   archived?: ArchiveRecord | null;
 }
 
@@ -134,7 +140,7 @@ export function officeSummary(allLocal: LocalApplication[], server: ServerRow[] 
     archived,
     toCheck: count("read", "read_failed"),
     reading: count("queued", "captured", "reading"),
-    routed: count("routed", "in_progress", "closed"),
+    routed: count("routed", "acknowledged", "in_progress", "closed"),
     /** Captured today on this device's calendar, by any phone. */
     today: all.filter((x) => new Date(x.captured_at).toDateString() === new Date().toDateString()).length,
     /** Scanned on this phone and not uploaded yet — only this phone can send these. */

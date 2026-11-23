@@ -1,7 +1,8 @@
 import "server-only";
 import { dept } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
-import type { Application, ArchiveReason, AuditEntry, VerifiedFields } from "@/lib/types";
+import { isOpenCase, isRouted, type Application, type ArchiveReason, type AuditEntry, type VerifiedFields } from "@/lib/types";
+import type { DepartmentCode } from "@/lib/reference";
 import { AIError, getReader, getReasoner, type PageImage } from "./ai";
 import { AI_LIMIT_PER_USER, AI_LIMIT_TOTAL, ANONYMOUS, takeAiRead } from "./quota";
 import { getSmsSender, tokenSms } from "./sms";
@@ -131,7 +132,7 @@ export class VerifyError extends Error {}
 export async function startRescan(token: string, pageCount: number, by: string) {
   return getStore().update(token, (a) => {
     if (a.archived) throw new VerifyError("Archived — restore it first");
-    if (a.status === "routed" || a.status === "in_progress" || a.status === "closed") {
+    if (isRouted(a.status)) {
       throw new VerifyError("Already verified — pages can no longer be replaced");
     }
     const stale = a.read_started_at && Date.now() - Date.parse(a.read_started_at) > READ_STALE_MS;
@@ -175,14 +176,20 @@ const FIELD_SOURCES: Record<keyof VerifiedFields, (a: Application) => unknown> =
  * record until staff confirm. Logs every edit against the AI value, routes to
  * the department with its SLA clock, and sends the token SMS.
  */
-export async function verifyApplication(token: string, fields: VerifiedFields, by: string, origin: string) {
+export async function verifyApplication(
+  token: string,
+  fields: VerifiedFields,
+  by: string,
+  origin: string,
+  onSpot?: { remark: string } | null,
+) {
   const store = getStore();
   const now = new Date();
   fields = { ...fields, mobile: normaliseMobile(fields.mobile) };
 
   const updated = await store.update(token, (a) => {
     if (a.archived) throw new VerifyError("Archived — restore it first");
-    if (a.status === "routed" || a.status === "in_progress" || a.status === "closed") {
+    if (isRouted(a.status)) {
       throw new VerifyError("Already verified");
     }
     const at = now.toISOString();
@@ -206,6 +213,15 @@ export async function verifyApplication(token: string, fields: VerifiedFields, b
       action: "verified_and_routed",
       to: { department: fields.department, secondary: fields.secondary_departments, sla_days: sla },
     });
+    // PRD "Hear" step: the Minister (or officer present) settled it at the Darbar.
+    if (onSpot) {
+      a.status = "closed";
+      a.closing_remark = onSpot.remark;
+      a.resolved_at = at;
+      a.resolved_by = by;
+      a.resolved_on_spot = true;
+      a.audit.push({ at, by, action: "resolved_on_the_spot", to: onSpot.remark });
+    }
     return a;
   });
   if (!updated) throw new VerifyError("Application not found");
@@ -266,4 +282,81 @@ export async function deleteApplication(token: string, by: string): Promise<"del
   if (!app.archived) throw new VerifyError("Archive it first, then delete");
   await store.remove(token, by);
   return "deleted";
+}
+
+// ---------------------------------------------------------------- after routing (department follow-up)
+
+export type ProgressAction =
+  | { action: "acknowledge"; note?: string | null }
+  | { action: "in_progress"; note?: string | null }
+  | { action: "remind"; note?: string | null }
+  | { action: "transfer"; department: DepartmentCode; reason: string }
+  | { action: "resolve"; remark: string }
+  | { action: "reopen"; reason: string };
+
+/**
+ * Record what the department did (pilot: office staff record it on the
+ * department's behalf). Every step goes into the audit trail, which is the
+ * timeline shown on the record and summarised on the citizen status page.
+ */
+export async function recordProgress(token: string, act: ProgressAction, by: string) {
+  return getStore().update(token, (a) => {
+    if (a.archived) throw new VerifyError("Archived — restore it first");
+    if (!isRouted(a.status)) throw new VerifyError("Verify and route the application first");
+    const at = new Date().toISOString();
+    const open = isOpenCase(a.status);
+    switch (act.action) {
+      case "acknowledge":
+        if (a.status !== "routed") throw new VerifyError("Only a newly forwarded application can be acknowledged");
+        a.status = "acknowledged";
+        a.audit.push({ at, by, action: "acknowledged", to: act.note || null });
+        break;
+      case "in_progress":
+        if (!open) throw new VerifyError("Already resolved — reopen it first");
+        a.status = "in_progress";
+        a.audit.push({ at, by, action: "in_progress", to: act.note || null });
+        break;
+      case "remind":
+        if (!open) throw new VerifyError("Already resolved");
+        a.reminders_sent = (a.reminders_sent ?? 0) + 1;
+        a.last_reminder_at = at;
+        a.audit.push({ at, by, action: "reminder", to: act.note || null });
+        break;
+      case "transfer": {
+        if (!open) throw new VerifyError("Already resolved — reopen it first");
+        if (!a.verified) throw new VerifyError("No verified details");
+        const from = a.verified.department;
+        if (from === act.department) throw new VerifyError("Already with that department");
+        const sla = dept(act.department)?.sla ?? 15;
+        a.verified = {
+          ...a.verified,
+          department: act.department,
+          secondary_departments: a.verified.secondary_departments.filter((d) => d !== act.department),
+        };
+        // The new department's response clock starts now.
+        a.status = "routed";
+        a.sla_due_at = new Date(Date.parse(at) + sla * 86_400_000).toISOString();
+        a.audit.push({ at, by, action: "transferred", from, to: { department: act.department, reason: act.reason, sla_days: sla } });
+        break;
+      }
+      case "resolve":
+        if (!open) throw new VerifyError("Already resolved");
+        a.status = "closed";
+        a.closing_remark = act.remark;
+        a.resolved_at = at;
+        a.resolved_by = by;
+        a.audit.push({ at, by, action: "resolved", to: act.remark });
+        break;
+      case "reopen":
+        if (a.status !== "closed") throw new VerifyError("Not resolved");
+        a.status = "in_progress";
+        a.resolved_at = null;
+        a.resolved_by = null;
+        a.resolved_on_spot = false;
+        a.audit.push({ at, by, action: "reopened", from: a.closing_remark, to: act.reason });
+        a.closing_remark = null;
+        break;
+    }
+    return a;
+  });
 }

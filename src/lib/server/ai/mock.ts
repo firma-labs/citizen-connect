@@ -1,5 +1,6 @@
 import type { ReaderOutput, ReasonerOutput } from "@/lib/types";
-import type { PageImage, Reader, Reasoner } from "./types";
+import type { DashboardStats } from "@/lib/dashboard";
+import type { Briefer, Briefing, BriefingInput, PageImage, Reader, Reasoner } from "./types";
 
 // Deterministic stand-in so the whole flow (capture → token → verify → SMS)
 // can be exercised on a phone without AI credentials. Returns a plausible
@@ -68,3 +69,31 @@ export class MockReasoner implements Reasoner {
     };
   }
 }
+
+/** Template briefing from the figures, for running without an AI key. */
+export class MockBriefer implements Briefer {
+  readonly id = "mock";
+  async brief({ stats, attention }: BriefingInput): Promise<Briefing> {
+    await sleep(600);
+    const s = stats as DashboardStats;
+    const lag = s.departments.filter((d) => d.overdue > 0).slice(0, 3).map((d) => `${d.code} (${d.overdue})`).join(", ") || "none";
+    const items = attention.slice(0, 3).map((a) => `${a.token} · ${a.department}`).join("; ") || "none";
+    return {
+      en: [
+        `• ${s.received} applications received; ${s.resolved} resolved (${s.resolved_pct}% of those routed).`,
+        `• ${s.open} open, of which ${s.overdue} are past the department's response time.`,
+        `• Departments with overdue applications: ${lag}.`,
+        `• Needs attention: ${items}.`,
+        `• Suggestion: ask lagging departments for a status note before the next Darbar.`,
+      ].join("\n"),
+      mr: [
+        `• एकूण ${s.received} अर्ज आले; त्यांपैकी ${s.resolved} निकाली (पाठवलेल्यांपैकी ${s.resolved_pct}%).`,
+        `• ${s.open} अर्ज प्रलंबित, त्यांपैकी ${s.overdue} मुदत उलटून गेलेले.`,
+        `• मुदत उलटलेले अर्ज असलेले विभाग: ${lag}.`,
+        `• लक्ष देण्याजोगे: ${items}.`,
+        `• सूचना: पुढील दरबारापूर्वी मागे असलेल्या विभागांकडून स्थिती अहवाल मागवावा.`,
+      ].join("\n"),
+    };
+  }
+}
+

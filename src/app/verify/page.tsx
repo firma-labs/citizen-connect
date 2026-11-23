@@ -3,6 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArchiveDialog, ArchivedNotice } from "@/components/Archive";
+import { CaseActions } from "@/components/CaseActions";
+import { Timeline } from "@/components/Timeline";
+import { isOverdue } from "@/lib/dashboard";
 import { RescanPanel } from "@/components/RescanPanel";
 import { AppBar, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +18,7 @@ import { fetchApplication, requestRead, syncNow } from "@/lib/client/sync";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { CATEGORIES, DEPARTMENTS, LANGUAGES, PAGE_TYPES, PRIORITIES, dept, refLabel } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
-import type { Application, Confidence, VerifiedFields } from "@/lib/types";
+import { isRouted, type Application, type Confidence, type VerifiedFields } from "@/lib/types";
 
 export default function VerifyPage() {
   return (
@@ -125,6 +128,9 @@ function Verify() {
   const [viewing, setViewing] = useState(0);
   const [rescanning, setRescanning] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  // PRD "Hear" step: settled at the Darbar by the Minister or officer present.
+  const [onSpot, setOnSpot] = useState(false);
+  const [onSpotRemark, setOnSpotRemark] = useState("");
   const [pollKey, setPollKey] = useState(0);
   const [seededFrom, setSeededFrom] = useState<string | null>(null); // read_at of the AI result in the form
 
@@ -205,7 +211,12 @@ function Verify() {
       const res = await fetch(`/api/applications/${encodeURIComponent(token)}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fields: { ...form, mobile: normaliseMobile(form.mobile) }, staff: settings.staff || "unknown", confirmed: true }),
+        body: JSON.stringify({
+          fields: { ...form, mobile: normaliseMobile(form.mobile) },
+          staff: settings.staff || "unknown",
+          confirmed: true,
+          resolved_on_spot: onSpot && onSpotRemark.trim() ? { remark: onSpotRemark.trim() } : null,
+        }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? res.statusText);
@@ -227,7 +238,7 @@ function Verify() {
   const archived = app?.archived ?? null;
   const canRescan = !archived && (status === "read" || status === "read_failed" || status === "captured");
   const showForm = !archived && !rescanning && !!form && (status === "read" || (status === "read_failed" && manual));
-  const done = status === "routed" || status === "in_progress" || status === "closed";
+  const done = !!status && isRouted(status);
   const pageType = (i: number) => {
     const code = app?.extraction?.reader.pages[i]?.page_type;
     return code ? refLabel(PAGE_TYPES.find((p) => p.code === code), locale) : null;
@@ -541,6 +552,24 @@ function Verify() {
                   </details>
                 )}
 
+                <div className="card p-5">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" checked={onSpot} onChange={(e) => setOnSpot(e.target.checked)} className="mt-0.5 h-6 w-6 shrink-0 accent-primary" />
+                    <span>
+                      <span className="block font-semibold">{t("verify.onSpot.label")}</span>
+                      <span className="block text-[0.9rem] text-ink-3">{t("verify.onSpot.hint")}</span>
+                    </span>
+                  </label>
+                  {onSpot && (
+                    <div className="mt-3">
+                      <label htmlFor="onspot-remark" className="block text-[0.92rem] font-semibold">
+                        {t("verify.onSpot.remark")}
+                      </label>
+                      <textarea id="onspot-remark" required value={onSpotRemark} onChange={(e) => setOnSpotRemark(e.target.value)} maxLength={1000} className={`${inputClass()} mt-1`} />
+                    </div>
+                  )}
+                </div>
+
                 <div className="rounded-[var(--radius-panel)] bg-primary-container p-5">
                   <label className="flex cursor-pointer items-start gap-3">
                     <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-7 w-7 shrink-0 accent-primary" />
@@ -641,17 +670,49 @@ function Verify() {
     const v = app.verified!;
     const d = dept(v.department);
     const sms = app.sms.at(-1);
+    const resolved = app.status === "closed";
+    const late = isOverdue(app);
     return (
       <div className="space-y-5">
-        <Notice tone="done" title={t("saved.title")}>
-          <p className="font-semibold text-ink">{refLabel(d, locale)}</p>
-          {v.secondary_departments.length > 0 && (
-            <p>{t("saved.also", { list: v.secondary_departments.map((c) => refLabel(dept(c), locale)).join(", ") })}</p>
-          )}
-          {app.sla_due_at && <p>{t("saved.due", { date: date(app.sla_due_at) })}</p>}
-        </Notice>
+        {resolved ? (
+          <Notice tone="done" title={app.resolved_on_spot ? t("record.resolvedOnSpot") : t("record.resolved")}>
+            {app.closing_remark && <p className="text-ink">“{app.closing_remark}”</p>}
+            {app.resolved_at && (
+              <p className="mt-1">
+                {t("archived.by", { by: app.resolved_by ?? "", date: date(app.resolved_at, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) })}
+              </p>
+            )}
+          </Notice>
+        ) : (
+          <Notice tone={late ? "error" : "info"} title={t("record.with", { dept: refLabel(d, locale) })}>
+            {app.sla_due_at && <p>{late ? t("record.overdue", { date: date(app.sla_due_at) }) : t("saved.due", { date: date(app.sla_due_at) })}</p>}
+            {v.secondary_departments.length > 0 && (
+              <p>{t("saved.also", { list: v.secondary_departments.map((c) => refLabel(dept(c), locale)).join(", ") })}</p>
+            )}
+          </Notice>
+        )}
+
+        <CaseActions app={app} onChange={setApp} />
+
+        <section className="card p-5">
+          <p className="text-[1.1rem] font-bold">{v.applicant_name_original}</p>
+          {v.applicant_name_roman && <p className="text-ink-3">{v.applicant_name_roman}</p>}
+          {v.subject && <p className="mt-2 font-semibold">{v.subject}</p>}
+          <p className="mt-2">{v.summary_local}</p>
+          <p lang="en" className="mt-2 text-ink-2">
+            {v.summary_en}
+          </p>
+        </section>
+
+        <section className="card p-5" aria-labelledby="timeline-title">
+          <h2 id="timeline-title" className="mb-4 text-[1.1rem] font-bold">
+            {t("record.timeline")}
+          </h2>
+          <Timeline audit={app.audit} />
+        </section>
+
         {sms && (
-          <section className="card p-4">
+          <section className="card p-5">
             <h2 className="font-bold">
               {t("saved.sms.label")}
               {sms.to ? <span className="ml-2 font-normal text-ink-3">+91 {sms.to}</span> : null}
@@ -659,35 +720,16 @@ function Verify() {
             <p className="text-[0.92rem] text-ink-3">
               {sms.status === "logged" ? t("saved.sms.logged") : sms.status === "skipped" ? t("saved.sms.skipped") : sms.status === "failed" ? t("saved.sms.failed") : null}
             </p>
-            <p className="mt-2 rounded-[var(--radius-control)] bg-paper p-3">{sms.body}</p>
+            <p className="mt-2 rounded-[var(--radius-control)] bg-surface p-3">{sms.body}</p>
           </section>
         )}
-        <section className="card p-4">
-          <p className="text-[1.1rem] font-bold">{v.applicant_name_original}</p>
-          {v.applicant_name_roman && <p className="text-ink-3">{v.applicant_name_roman}</p>}
-          <p className="mt-2">{v.summary_local}</p>
-          <p lang="en" className="mt-2 text-ink-2">
-            {v.summary_en}
-          </p>
-        </section>
-        <details className="card">
-          <summary className="flex min-h-14 cursor-pointer items-center px-4 font-semibold">{t("saved.history", { n: app.audit.length })}</summary>
-          <ol className="space-y-2 border-t border-rule p-4 text-[0.9rem]">
-            {app.audit.map((a, i) => (
-              <li key={i} className="border-b border-rule pb-2 last:border-0">
-                <span className="text-ink-3">{date(a.at, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span> — <b>{a.by}</b>{" "}
-                {a.action}
-                {a.field ? `: ${a.field} ${JSON.stringify(a.from)} → ${JSON.stringify(a.to)}` : ""}
-              </li>
-            ))}
-          </ol>
-        </details>
+
         <div className="grid gap-3 sm:grid-cols-2">
+          <Button href="/applications" variant="secondary" size="lg">
+            {t("record.toApplications")}
+          </Button>
           <Button href="/capture" icon="camera" size="lg">
             {t("saved.next")}
-          </Button>
-          <Button href="/queue" variant="secondary" size="lg">
-            {t("saved.queue")}
           </Button>
         </div>
       </div>

@@ -1,9 +1,9 @@
 import "server-only";
-import { ClaudeReader, ClaudeReasoner, type ClaudeProvider } from "./claude";
-import { MockReader, MockReasoner } from "./mock";
-import type { Reader, Reasoner } from "./types";
+import { ClaudeBriefer, ClaudeReader, ClaudeReasoner, type ClaudeProvider } from "./claude";
+import { MockBriefer, MockReader, MockReasoner } from "./mock";
+import type { Briefer, Reader, Reasoner } from "./types";
 
-export type { PageImage, Reader, Reasoner } from "./types";
+export type { Briefer, Briefing, BriefingInput, PageImage, Reader, Reasoner } from "./types";
 export { AIError } from "./claude";
 
 // Engines are chosen by configuration, not code (PRD §7.1):
@@ -45,3 +45,10 @@ export function getReasoner(): Reasoner {
   const s = parseSpec(process.env.AI_REASONER || process.env.AI_READER || DEFAULT_SPEC);
   return s.provider === "mock" ? new MockReasoner() : new ClaudeReasoner({ ...s, effort });
 }
+
+/** Minister's briefing: same engine as the Reasoner. */
+export function getBriefer(): Briefer {
+  const s = parseSpec(process.env.AI_REASONER || process.env.AI_READER || DEFAULT_SPEC);
+  return s.provider === "mock" ? new MockBriefer() : new ClaudeBriefer({ ...s, effort });
+}
+

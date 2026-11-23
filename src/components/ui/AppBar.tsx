@@ -41,6 +41,12 @@ export function AppBar({ title, back, publicPage: publicOnly }: { title?: Messag
         {!publicPage && <DesktopNav />}
         {!publicPage && <Connection />}
         <LanguageMenu />
+        {/* Settings sits in the top bar: the bottom bar holds the five working screens. */}
+        {!publicPage && (
+          <Link href="/settings" aria-label={t("nav.settings")} title={t("nav.settings")} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-ink-2 transition-colors hover:bg-ink/5">
+            <Icon name="gear" size={22} />
+          </Link>
+        )}
       </div>
     </header>
   );
@@ -50,7 +56,8 @@ const NAV: { href: string; key: MessageKey; icon: IconName }[] = [
   { href: "/", key: "nav.home", icon: "home" },
   { href: "/capture", key: "nav.scan", icon: "camera" },
   { href: "/queue", key: "nav.queue", icon: "list" },
-  { href: "/settings", key: "nav.settings", icon: "settings" },
+  { href: "/applications", key: "nav.applications", icon: "folder" },
+  { href: "/dashboard", key: "nav.dashboard", icon: "chart" },
 ];
 
 /** Pastel conic-gradient mark, as in the Janata Darbar prototype. */
@@ -99,7 +106,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-20 border-t border-rule bg-surface/95 backdrop-blur-md lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="mx-auto grid max-w-xl grid-cols-4">
+      <ul className="mx-auto grid max-w-xl grid-cols-5">
         {NAV.map((n) => {
           const active = path === n.href;
           return (
@@ -107,7 +114,7 @@ export function BottomNav() {
               <Link
                 href={n.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex h-[4.25rem] flex-col items-center justify-center gap-1 text-[0.76rem] font-medium ${active ? "font-semibold text-ink" : "text-ink-3"}`}
+                className={`relative flex h-[4.25rem] flex-col items-center justify-center gap-1 px-0.5 text-center text-[0.74rem] font-medium leading-tight ${active ? "font-semibold text-ink" : "text-ink-3"}`}
               >
                 <span className={`grid h-8 w-14 place-items-center rounded-full transition-colors ${active ? "bg-primary-container text-on-primary-container" : ""}`}>
                   <Icon name={n.icon} size={22} />

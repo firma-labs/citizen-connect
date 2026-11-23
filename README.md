@@ -52,6 +52,9 @@ an error saying so. Mock or redacted letters only (PRD §9.1).
 
 - `src/app/capture` — camera capture (phone camera app via file input), page straightening ([scanic](https://www.npmjs.com/package/scanic)) and shadow removal ([OpenCV.js](https://www.npmjs.com/package/@techstark/opencv-js), served from `public/vendor`, copied on `npm install`), token + QR
 - `src/app/queue`, `src/app/verify` — sync status, AI result review with low-confidence highlights, save & route
+- `src/app/verify` (saved view) — the record: department follow-up (acknowledged, in progress, reminder, send to another department, resolved / reopen) and the timeline
+- `src/app/applications` — all routed applications ("Cases"): search and filter by department, status (open / overdue / resolved) and Darbar session
+- `src/app/dashboard` — Minister's dashboard: headline figures, departments, ageing, sessions, subjects, talukas, department performance, AI briefing (English + Marathi)
 - `src/app/track` — public status page (token + mobile)
 - `src/lib/client` — IndexedDB offline queue, sync engine, image processing
 - `src/lib/server/ai` — `Reader` / `Reasoner` interfaces + Claude (API/Bedrock) and mock engines

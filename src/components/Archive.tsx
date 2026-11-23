@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSettings } from "@/lib/client/settings";
 import { useI18n } from "@/lib/i18n";
-import { ARCHIVE_REASONS, type ArchiveReason, type ArchiveRecord } from "@/lib/types";
+import { ARCHIVE_REASONS, isRouted, type ArchiveReason, type ArchiveRecord } from "@/lib/types";
 import { Button } from "./ui/Button";
 import { inputClass } from "./ui/Field";
 import { Notice } from "./ui/Notice";
@@ -45,7 +45,7 @@ export function ArchiveDialog({ token, status, onClose, onDone }: { token: strin
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const routed = status === "routed" || status === "in_progress" || status === "closed";
+  const routed = !!status && isRouted(status);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

@@ -8,7 +8,9 @@
     "scan": "Scan",
     "queue": "Queue",
     "track": "Status",
-    "settings": "Settings"
+    "settings": "Settings",
+    "applications": "Cases",
+    "dashboard": "Dashboard"
   },
   "back": "Back",
   "lang": {
@@ -29,12 +31,14 @@
     "read_failed": "Could not read",
     "routed": "Sent to department",
     "in_progress": "Action in progress",
-    "closed": "Closed"
+    "closed": "Resolved",
+    "acknowledged": "Acknowledged",
+    "overdue": "Overdue · {status}"
   },
   "home": {
     "today": "Today's Darbar",
     "setup": {
-      "title": "Add your name and venue",
+      "title": "Add your name",
       "body": "Your name is recorded with every token and every edit."
     },
     "stat": {
@@ -51,7 +55,9 @@
       "hint": "Photograph each page. The token is issued straight away."
     },
     "queue": "Queue and checking",
-    "track": "Check a status"
+    "track": "Check a status",
+    "applications": "Cases and follow-up",
+    "dashboard": "Dashboard and briefing"
   },
   "capture": {
     "title": "Scan pages",
@@ -157,6 +163,11 @@
     "limitTotal": {
       "title": "Today's overall AI limit is reached",
       "body": "All staff together can run {n} AI readings a day. Enter the details by hand, or read again tomorrow."
+    },
+    "onSpot": {
+      "label": "Resolved on the spot by the Minister",
+      "hint": "Tick this if it was settled at the Darbar. It is still routed and recorded, then closed straight away.",
+      "remark": "What was decided"
     }
   },
   "section": {
@@ -246,7 +257,8 @@
       "received": "Received",
       "routed": "Sent to department",
       "in_progress": "Action in progress",
-      "closed": "Closed"
+      "closed": "Resolved",
+      "acknowledged": "Acknowledged by the department"
     },
     "expected": "Action expected by {date}",
     "beingChecked": "Your application is being checked.",
@@ -263,7 +275,8 @@
     "language": "Language",
     "hints": {
       "label": "Show English labels under fields",
-      "hint": "Helps when staff read Marathi and English."
+      "hint": "Helps when staff read Marathi and English.",
+      "englishOnly": "English labels under fields are shown only when the app is in Marathi or Hindi."
     },
     "autoCrop": {
       "label": "Straighten pages and remove shadows",
@@ -281,7 +294,16 @@
     "account": "Signed in",
     "signOut": "Sign out",
     "aiToday": "Your AI readings today",
-    "aiTotal": "All staff, today"
+    "aiTotal": "All staff, today",
+    "tab": {
+      "account": "Account",
+      "app": "App",
+      "system": "System"
+    },
+    "group": {
+      "display": "Display",
+      "scanning": "Scanning"
+    }
   },
   "login": {
     "title": "Staff sign-in",
@@ -397,5 +419,129 @@
     "delete": "Delete permanently",
     "deleteConfirm": "Delete {token} permanently? Its record and page photos are removed from the server. This cannot be undone.",
     "error": "Could not finish: {msg}"
+  },
+  "record": {
+    "with": "With {dept}",
+    "overdue": "Overdue — response was due on {date}",
+    "resolved": "Resolved",
+    "resolvedOnSpot": "Resolved on the spot at the Darbar",
+    "timeline": "Timeline",
+    "toApplications": "All cases"
+  },
+  "case": {
+    "title": "Department follow-up",
+    "onBehalf": "Record what the department did. In the pilot, office staff record it on the department's behalf.",
+    "acknowledge": "Department acknowledged",
+    "inProgress": "In progress",
+    "remind": "Send reminder",
+    "transfer": "Send to another department",
+    "resolve": "Mark resolved",
+    "reopen": "Reopen",
+    "note": "Note",
+    "remark": "Closing remark (shown to the citizen)",
+    "reason": "Reason",
+    "optional": "optional",
+    "toDepartment": "Department",
+    "chooseDepartment": "Choose a department",
+    "remindNote": "The reminder is recorded in the timeline. Sending it by SMS or email starts once those are switched on.",
+    "transferNote": "The new department's response time starts today.",
+    "error": "Could not save: {msg}"
+  },
+  "timeline": {
+    "received": "Received at the intake desk; token issued",
+    "aiRead": "Read by AI",
+    "aiFailed": "AI could not read the pages",
+    "rescan": "Pages rescanned",
+    "edited": "{n, plural, one {# detail corrected by staff} other {# details corrected by staff}}",
+    "forwarded": "Forwarded to {dept} ({days}-day response time)",
+    "smsLogged": "Token SMS recorded (not sent in the pilot)",
+    "smsSent": "Token SMS sent",
+    "smsSkipped": "No SMS — no valid mobile number",
+    "acknowledged": "Acknowledged by the department",
+    "inProgress": "Department reports work in progress",
+    "reminder": "Reminder sent to the department",
+    "transferred": "Sent from {from} to {to} ({days}-day response time)",
+    "resolved": "Resolved",
+    "resolvedOnSpot": "Resolved on the spot by the Minister",
+    "reopened": "Reopened",
+    "archived": "Archived",
+    "restored": "Restored"
+  },
+  "apps": {
+    "title": "Cases",
+    "search": "Search token, name or subject",
+    "department": "Department",
+    "allDepartments": "All departments",
+    "status": "Status",
+    "allStatuses": "All statuses",
+    "open": "Open",
+    "overdue": "Overdue",
+    "resolved": "Resolved",
+    "session": "Darbar session",
+    "allSessions": "All sessions",
+    "count": "{n} of {total} cases",
+    "loading": "Loading…",
+    "empty": "No application has been routed yet. They appear here once staff check and save them.",
+    "noMatch": "Nothing matches these filters.",
+    "token": "Token",
+    "applicant": "Applicant",
+    "subject": "Subject",
+    "daysHead": "Days",
+    "days": "{n, plural, one {# day} other {# days}}",
+    "more": "Show more"
+  },
+  "dash": {
+    "title": "Dashboard",
+    "sub": "All Darbar sessions, updated every minute.",
+    "error": "Could not load the figures: {msg}",
+    "kpi": {
+      "received": "Received",
+      "awaiting": "{n} waiting for staff to check",
+      "resolved": "Resolved",
+      "resolvedOf": "{a} of {b} routed",
+      "open": "Open",
+      "openSub": "Waiting for department action",
+      "overdue": "Overdue",
+      "overdueSub": "Past the response time ({a}–{b} days)",
+      "avgDays": "Days to resolve",
+      "avgDaysSub": "Average, from routing to resolution",
+      "onSpot": "{n} resolved on the spot"
+    },
+    "waiting": "Where applications are waiting",
+    "waitingSub": "Open applications by department",
+    "withinTime": "Within time",
+    "overdue": "Overdue",
+    "noneOpen": "No open applications.",
+    "noneYet": "Nothing to show yet.",
+    "age": {
+      "title": "Age of open applications",
+      "0_7": "Up to 7 days",
+      "8_15": "8–15 days",
+      "16_30": "16–30 days",
+      "30_plus": "Over 30 days"
+    },
+    "sessions": "By Darbar session",
+    "categories": "By subject",
+    "talukas": "By taluka",
+    "performance": "Department performance",
+    "col": {
+      "received": "Received",
+      "resolved": "Resolved",
+      "rate": "Resolution rate",
+      "avgDays": "Avg days",
+      "overdue": "Overdue now"
+    },
+    "brief": {
+      "title": "Briefing for the Minister",
+      "sub": "A short read-out of these figures in English and Marathi, ready before the next Darbar. Uses one AI reading.",
+      "write": "Write AI briefing",
+      "again": "Write again",
+      "writing": "Writing…",
+      "copy": "Copy",
+      "copied": "Copied",
+      "at": "Written {date}",
+      "limit": "Your AI limit for today is reached.",
+      "limitTotal": "Today's overall AI limit is reached."
+    }
   }
 }

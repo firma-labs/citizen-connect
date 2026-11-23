@@ -32,7 +32,7 @@ export default function TrackPage() {
 
 interface Result {
   token: string;
-  stage: "received" | "routed" | "in_progress" | "closed";
+  stage: "received" | "routed" | "acknowledged" | "in_progress" | "closed";
   received_at: string;
   department: { code: string } | null;
   sla_due_at: string | null;
@@ -42,6 +42,7 @@ interface Result {
 const STAGES: { key: Result["stage"]; label: MessageKey }[] = [
   { key: "received", label: "track.stage.received" },
   { key: "routed", label: "track.stage.routed" },
+  { key: "acknowledged", label: "track.stage.acknowledged" },
   { key: "in_progress", label: "track.stage.in_progress" },
   { key: "closed", label: "track.stage.closed" },
 ];

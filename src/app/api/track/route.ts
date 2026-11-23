@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const d = dept(app.verified?.department);
   const stage =
-    app.status === "closed" || app.archived ? "closed" : app.status === "in_progress" ? "in_progress" : app.status === "routed" ? "routed" : "received";
+    app.status === "closed" || app.archived ? "closed" : app.status === "in_progress" ? "in_progress" : app.status === "acknowledged" ? "acknowledged" : app.status === "routed" ? "routed" : "received";
   return json({
     token: app.token,
     stage,

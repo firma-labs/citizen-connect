@@ -108,9 +108,17 @@ export type ApplicationStatus =
   | "reading" // AI running
   | "read" // AI done, waiting for staff verification
   | "read_failed" // AI failed; staff can retry or fill manually
-  | "routed" // verified, routed to department, SLA clock running
-  | "in_progress"
-  | "closed";
+  | "routed" // verified, forwarded to the department, response clock running
+  | "acknowledged" // department has acknowledged it
+  | "in_progress" // department reports work in progress
+  | "closed"; // resolved, with a closing remark
+
+/** Statuses after staff verified and routed the application. */
+export const ROUTED_STATUSES: readonly ApplicationStatus[] = ["routed", "acknowledged", "in_progress", "closed"];
+/** Routed and still waiting for the department (counts toward "open" and "overdue"). */
+export const OPEN_STATUSES: readonly ApplicationStatus[] = ["routed", "acknowledged", "in_progress"];
+export const isRouted = (s: string) => (ROUTED_STATUSES as readonly string[]).includes(s);
+export const isOpenCase = (s: string) => (OPEN_STATUSES as readonly string[]).includes(s);
 
 export interface SmsRecord {
   to: string;
@@ -162,6 +170,13 @@ export interface Application {
   verified_by: string | null;
   sla_due_at: string | null;
   closing_remark: string | null;
+  /** When and by whom it was resolved (also set for "resolved on the spot" at the Darbar). */
+  resolved_at?: string | null;
+  resolved_by?: string | null;
+  resolved_on_spot?: boolean;
+  /** Reminders sent to the department (recorded; delivery waits for SMS/email). */
+  reminders_sent?: number;
+  last_reminder_at?: string | null;
   sms: SmsRecord[];
   audit: AuditEntry[];
   /** Set while archived: hidden from the queue and counts, kept for the record, can be restored. */

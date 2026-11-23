@@ -66,7 +66,7 @@ export function stopSync() {
   started = false;
 }
 
-const DONE = new Set(["routed", "in_progress", "closed"]);
+const DONE = new Set(["routed", "acknowledged", "in_progress", "closed"]);
 
 export async function syncNow(): Promise<void> {
   if (running || (typeof navigator !== "undefined" && !navigator.onLine)) return;

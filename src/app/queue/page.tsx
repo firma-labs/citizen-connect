@@ -13,6 +13,7 @@ import { localStatus, officeSummary, useOfficeApplications } from "@/lib/client/
 import { SYNC_TIMEOUT, onSyncState, requestRead, syncNow } from "@/lib/client/sync";
 import { useI18n } from "@/lib/i18n";
 import { dept, refLabel } from "@/lib/reference";
+import { isRouted } from "@/lib/types";
 
 export default function QueuePage() {
   const { t, num } = useI18n();
@@ -213,7 +214,7 @@ function Item({
       </div>
       <p className="mt-1 text-[0.9rem] text-ink-3">{meta.join(" · ")}</p>
       {detail && <p className={`mt-2 line-clamp-2 text-[0.95rem] ${status === "read_failed" ? "text-red-700" : "text-ink-2"}`}>{detail}</p>}
-      {(needsCheck || status === "routed" || onArchive || onDeleteLocal) && (
+      {(needsCheck || isRouted(status) || onArchive || onDeleteLocal) && (
         <div className="mt-3 flex flex-wrap gap-2">
           {needsCheck && (
             <Button href={verifyHref} className="flex-1">
@@ -233,7 +234,7 @@ function Item({
               {t("queue.retry")}
             </Button>
           )}
-          {status === "routed" && (
+          {isRouted(status) && (
             <Button variant="secondary" href={verifyHref} className="flex-1">
               {t("queue.view")}
             </Button>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageEditor } from "@/components/PageEditor";
+import { VenuePicker } from "@/components/VenuePicker";
 import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -168,6 +169,13 @@ export default function CapturePage() {
     void syncNow();
   }
 
+  /** A new venue needs a new token (its code is in the token): drop the empty draft; a new one starts with the new venue. */
+  async function dropEmptyDraft() {
+    if (!token || pages.length > 0) return;
+    await deleteApp(token);
+    setToken(null);
+  }
+
   async function discard() {
     if (!token || !confirm(t("capture.discardConfirm"))) return;
     await deleteApp(token);
@@ -207,6 +215,11 @@ export default function CapturePage() {
         <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFiles(e.target.files)} />
         <input ref={galleryInput} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void onFiles(e.target.files)} />
 
+        {/* Today's Darbar: the token carries the venue code, so it can change only before the first page. */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-ink-3">{t("home.today")}</span>
+          <VenuePicker disabled={pages.length > 0} beforeChange={dropEmptyDraft} />
+        </div>
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <p className="text-ink-3">{t("capture.count")}</p>
