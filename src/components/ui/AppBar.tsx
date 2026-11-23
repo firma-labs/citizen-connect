@@ -65,13 +65,13 @@ function DesktopNav() {
   const { t } = useI18n();
   const path = usePathname();
   return (
-    <nav className="mr-2 hidden items-center gap-1 rounded-full bg-paper p-1 lg:flex" aria-label="Main">
+    <nav className="mr-2 hidden items-center gap-1 rounded-[var(--radius-control)] bg-paper p-1 lg:flex" aria-label="Main">
       {NAV.map((n) => (
         <Link
           key={n.href}
           href={n.href}
           aria-current={path === n.href ? "page" : undefined}
-          className={`flex h-10 items-center gap-2 rounded-full px-4 font-medium ${path === n.href ? "bg-ink text-white shadow-[0_0_0_3px_#b4d6fb]" : "text-ink-2 hover:bg-surface"}`}
+          className={`flex h-10 items-center gap-2 rounded-[var(--radius-inner)] px-4 font-medium ${path === n.href ? "bg-ink text-white" : "text-ink-2 hover:bg-surface"}`}
         >
           <Icon name={n.icon} size={20} />
           {t(n.key)}
@@ -192,7 +192,7 @@ function LanguageMenu() {
         aria-expanded={open}
         aria-label={`${t("lang.label")}: ${current.name}`}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 items-center gap-1.5 rounded-full bg-paper px-3.5 font-medium text-ink hover:bg-indigo-50"
+        className="flex h-10 items-center gap-1.5 rounded-[var(--radius-control)] border-[1.5px] border-line bg-surface px-3 font-medium text-ink hover:border-indigo-200 hover:bg-indigo-50"
       >
         <Icon name="globe" size={18} />
         <span className="text-[0.92rem]">{current.name}</span>

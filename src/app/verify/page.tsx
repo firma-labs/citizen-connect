@@ -77,7 +77,7 @@ function fromExtraction(app: Application): VerifiedFields {
 const CHECKABLE: { key: keyof VerifiedFields; label: MessageKey }[] = [
   { key: "applicant_name_original", label: "field.nameOriginal" },
   { key: "applicant_name_roman", label: "field.nameRoman" },
-  { key: "mobile", label: "field.mobile" },
+  { key: "mobile", label: "field.mobile.label" },
   { key: "address", label: "field.address" },
   { key: "locality", label: "field.locality" },
   { key: "taluka", label: "field.taluka" },
@@ -94,7 +94,7 @@ const UNCLEAR_LABELS: Record<string, MessageKey> = {
   applicant_name_original: "field.nameOriginal",
   applicant_name_roman: "field.nameRoman",
   name: "field.nameOriginal",
-  mobile: "field.mobile",
+  mobile: "field.mobile.label",
   address: "field.address",
   locality: "field.locality",
   taluka: "field.taluka",
@@ -278,7 +278,7 @@ function Verify() {
                         key={u}
                         onClick={() => setViewing(i)}
                         aria-current={viewing === i}
-                        className={`h-11 min-w-11 rounded-full px-3 font-semibold ${viewing === i ? "bg-ink text-white" : "bg-paper text-ink hover:bg-indigo-50"}`}
+                        className={`h-11 min-w-11 rounded-[var(--radius-control)] border-[1.5px] px-3 font-semibold ${viewing === i ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:border-indigo-200 hover:bg-indigo-50"}`}
                       >
                         {i + 1}
                         {pageType(i) ? <span className="ml-1.5 font-normal opacity-80">{pageType(i)}</span> : null}
@@ -384,7 +384,7 @@ function Verify() {
                   <TextField id="applicant_name_roman" label="field.nameRoman" form={form} set={set} attention={attentionOf("applicant_name_roman")} />
                   <TextField
                     id="mobile"
-                    label="field.mobile"
+                    label="field.mobile.label"
                     form={form}
                     set={set}
                     attention={attentionOf("mobile")}
@@ -457,7 +457,7 @@ function Verify() {
                             onClick={() =>
                               set("secondary_departments", on ? form.secondary_departments.filter((x) => x !== d.code) : [...form.secondary_departments, d.code])
                             }
-                            className={`flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[0.92rem] font-semibold ${on ? "bg-indigo-100 text-indigo-900 ring-1 ring-inset ring-indigo-200" : "bg-paper text-ink-2 hover:bg-indigo-50"}`}
+                            className={`flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] border-[1.5px] px-3.5 text-[0.92rem] font-semibold ${on ? "border-indigo-600 bg-indigo-50 text-indigo-900" : "border-line bg-surface text-ink-2 hover:border-indigo-200 hover:bg-indigo-50"}`}
                           >
                             {on && <Icon name="check" size={16} />}
                             {refLabel(d, locale)}
@@ -468,14 +468,14 @@ function Verify() {
                   </fieldset>
                   <Field
                     id="priority"
-                    label="field.priority"
+                    label="field.priority.label"
                     help={app?.extraction?.reasoner.priority_reason ? t("field.priority.reason", { r: app.extraction.reasoner.priority_reason }) : undefined}
                   >
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup">
                       {PRIORITIES.map((p) => (
                         <label
                           key={p.code}
-                          className={`flex min-h-12 cursor-pointer items-center justify-center rounded-full px-3 font-medium ${form.priority === p.code ? (p.code === "urgent" ? "bg-red-600 text-white shadow-[0_0_0_3px_var(--color-red-200)]" : "bg-ink text-white shadow-[0_0_0_3px_var(--color-sky-200)]") : "bg-paper text-ink-2 hover:bg-indigo-50"}`}
+                          className={`flex min-h-12 cursor-pointer items-center justify-center rounded-[var(--radius-control)] border-[1.5px] px-3 font-medium has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${form.priority === p.code ? (p.code === "urgent" ? "border-red-600 bg-red-600 text-white" : "border-ink bg-ink text-white") : "border-line bg-surface text-ink-2 hover:border-indigo-200 hover:bg-indigo-50"}`}
                         >
                           <input type="radio" name="priority" value={p.code} checked={form.priority === p.code} onChange={() => set("priority", p.code)} className="sr-only" />
                           {refLabel(p, locale)}
@@ -554,7 +554,7 @@ function Verify() {
               >
                 <Icon name="next" />
               </button>
-              <button onClick={() => setZoom(null)} className="flex h-12 items-center gap-2 rounded-full bg-white/15 px-4 font-semibold">
+              <button onClick={() => setZoom(null)} className="flex h-12 items-center gap-2 rounded-[var(--radius-control)] bg-white/15 px-4 font-semibold">
                 <Icon name="close" size={20} />
                 {t("zoom.close")}
               </button>
@@ -630,7 +630,7 @@ function Verify() {
         {sms && (
           <section className="card p-4">
             <h2 className="font-bold">
-              {t("saved.sms")}
+              {t("saved.sms.label")}
               {sms.to ? <span className="ml-2 font-normal text-ink-3">+91 {sms.to}</span> : null}
             </h2>
             <p className="text-[0.92rem] text-ink-3">

@@ -5,7 +5,8 @@
  * White page; each kind of information has its own pastel family
  * (sky = in progress, peach = needs a person, rose = late or failed,
  * mint = done, violet = selection and links). Primary actions are dark ink
- * pills. Text colours keep WCAG 2.2 AA contrast on their tints.
+ * buttons with a violet pressed edge; secondary actions are bordered.
+ * Text colours keep WCAG 2.2 AA contrast on their tints.
  */
 :root {
   color-scheme: light;
@@ -19,6 +20,7 @@
   --color-surface: #ffffff;
   --color-rule: #ebedf4;
   --color-rule-strong: #d3d7e5;
+  --color-line: #7d829b; /* field and option borders: 3.8:1 on white (WCAG 1.4.11) */
 
   /* violet: links, selection, brand */
   --color-indigo-50: #f4f1ff;
@@ -60,8 +62,13 @@
 
   --font-sans: var(--font-poppins), system-ui, sans-serif;
 
-  --radius-control: 14px;
-  --radius-panel: 22px;
+  /* Corner scale (close to Material 3 small / medium / large): buttons,
+     fields and options are crisp rectangles; status tags, counters, avatars
+     and round icon buttons stay pill/circle so states read differently from actions. */
+  --radius-control: 8px; /* buttons, inputs, options */
+  --radius-inner: 5px; /* item inside a padded control (segmented choices) */
+  --radius-panel: 12px; /* cards, notices, tiles */
+  --radius-hero: 16px; /* large feature panels */
 }
 
 /* White card with a hairline and a soft, low shadow. */
@@ -94,12 +101,17 @@ h3 {
   text-wrap: balance;
 }
 
-/* Visible keyboard focus: dark outline on a yellow halo (JIS X 8341-3 / WCAG 2.2 2.4.13). */
+/* Visible keyboard focus (GOV.UK / UX4G / WCAG 2.2 2.4.13): a dark outline on a
+   yellow halo, following each element's own corners. Unlayered, so it wins
+   over utility shadows while focused. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--color-ink);
   outline-offset: 2px;
   box-shadow: 0 0 0 6px var(--color-focus);
-  border-radius: 6px;
+}
+/* Fields: the halo sits on the field itself, so the border also turns dark. */
+:where(input, select, textarea):focus-visible {
+  border-color: var(--color-ink);
 }
 
 input,

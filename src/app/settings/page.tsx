@@ -67,7 +67,7 @@ export default function SettingsPage() {
             setSavedName(true);
           }}
         >
-          <Field id="staff" label="settings.staff" hintKey="settings.staff.hint">
+          <Field id="staff" label="settings.staff.label" hintKey="settings.staff.hint">
             <div className="flex gap-2">
               <input
                 id="staff"
@@ -104,8 +104,8 @@ export default function SettingsPage() {
         />
 
         <div className="mt-8 divide-y divide-rule card">
-          {locale !== "en" && <Toggle label="settings.hints" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />}
-          <Toggle label="settings.autoCrop" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
+          {locale !== "en" && <Toggle label="settings.hints.label" help="settings.hints.hint" checked={s.hints} onChange={(v) => saveSettings({ hints: v })} />}
+          <Toggle label="settings.autoCrop.label" help="settings.autoCrop.hint" checked={s.autoCrop} onChange={(v) => saveSettings({ autoCrop: v })} />
         </div>
 
         <section className="mt-10">
@@ -170,14 +170,14 @@ function Choice({
         {t(title)}
         {hint(title) && <span className="block text-[0.82rem] font-normal text-ink-3">{hint(title)}</span>}
       </legend>
-      <div className="mt-2 grid grid-cols-3 gap-1 rounded-full bg-paper p-1">
+      <div className="mt-2 grid grid-cols-3 gap-1 rounded-[var(--radius-control)] border-[1.5px] border-line bg-surface p-1">
         {options.map((o) => {
           const on = o.value === value;
           return (
             <label
               key={o.value}
               lang={o.lang}
-              className={`flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2 text-center font-medium leading-tight has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-focus ${on ? "bg-ink text-white shadow-[0_0_0_3px_var(--color-sky-200)]" : "text-ink-2 hover:bg-surface"}`}
+              className={`flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-inner)] px-2 text-center font-medium leading-tight has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-focus ${on ? "bg-ink text-white" : "text-ink-2 hover:bg-indigo-50"}`}
             >
               <input type="radio" name={title} value={o.value} checked={on} onChange={() => onChange(o.value)} className="sr-only" />
               {o.label}

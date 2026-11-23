@@ -91,7 +91,7 @@ function Track() {
             className={`${inputClass()} token text-[1.25rem]`}
           />
         </Field>
-        <Field id="mobile" label="track.mobile" hintKey="track.mobile.hint">
+        <Field id="mobile" label="track.mobile.label" hintKey="track.mobile.hint">
           <input
             id="mobile"
             value={mobile}

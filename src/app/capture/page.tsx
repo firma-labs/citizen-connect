@@ -181,7 +181,7 @@ export default function CapturePage() {
       <>
         <AppBar title="token.title" />
         <Screen>
-          <div className="rounded-[28px] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4 sm:p-6">
+          <div className="rounded-[var(--radius-hero)] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4 sm:p-6">
             <TokenCard token={issued.token} pages={issued.pages} issuedAt={issued.at} />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-[0.92rem] text-ink-3">{t("token.saved")}</p>
@@ -218,7 +218,7 @@ export default function CapturePage() {
         <button
           onClick={() => cameraInput.current?.click()}
           disabled={!token}
-          className="group relative isolate flex min-h-52 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[28px] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6 text-ink transition-transform active:scale-[0.99] disabled:opacity-50"
+          className="group relative isolate flex min-h-52 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--radius-hero)] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-6 text-ink transition-transform active:scale-[0.99] disabled:opacity-50"
         >
           <span aria-hidden className="pointer-events-none absolute -right-12 -top-12 -z-10 h-40 w-40 rounded-full bg-white/50" />
           <span className="relative grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-ink text-white shadow-[0_10px_24px_-10px_rgb(28_31_51/0.6)]">

@@ -54,7 +54,7 @@ export function PageEditor({
       <div className="flex items-center justify-between gap-2 p-3 text-white" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
         <span className="font-semibold">{mode === "corners" ? t("scan.cornersHint") : title}</span>
         {mode === "view" && (
-          <button onClick={onClose} className="flex h-12 shrink-0 items-center gap-2 rounded-full bg-white/15 px-4 font-semibold">
+          <button onClick={onClose} className="flex h-12 shrink-0 items-center gap-2 rounded-[var(--radius-control)] bg-white/15 px-4 font-semibold">
             <Icon name="close" size={20} />
             {t("capture.close")}
           </button>
@@ -110,7 +110,7 @@ export function PageEditor({
                           aria-checked={on}
                           disabled={busy}
                           onClick={() => !on && void apply({ ...page.edits!, clean })}
-                          className={`min-h-11 rounded-[10px] font-semibold ${on ? "bg-white text-ink" : "text-white"}`}
+                          className={`min-h-11 rounded-[var(--radius-inner)] font-semibold ${on ? "bg-white text-ink" : "text-white"}`}
                         >
                           {t(clean ? "scan.clean" : "scan.photo")}
                         </button>

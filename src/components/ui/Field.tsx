@@ -10,7 +10,7 @@ export const inputClass = (attention?: Attention, invalid?: boolean) =>
   [
     "block w-full rounded-[var(--radius-control)] border-[1.5px] bg-surface px-4 py-3 text-ink shadow-[inset_0_1px_2px_rgb(28_31_51/0.04)]",
     "placeholder:text-ink-3 min-h-12",
-    invalid ? "border-red-600" : attention === "low" ? "border-marigold-500 bg-marigold-50/50" : attention === "medium" ? "border-marigold-200" : "border-rule-strong",
+    invalid ? "border-red-600" : attention === "low" ? "border-marigold-500 bg-marigold-50/50" : attention === "medium" ? "border-marigold-200" : "border-line",
   ].join(" ");
 
 /**

@@ -18,7 +18,7 @@ export default function Offline() {
           <h1 className="mt-5 text-[1.6rem] font-extrabold">{t("offline.title")}</h1>
           <p className="mt-2 text-ink-2">{t("offline.body")}</p>
           <Button href="/capture" size="lg" icon="camera" className="mt-6">
-            {t("home.scan")}
+            {t("home.scan.label")}
           </Button>
         </div>
       </Screen>

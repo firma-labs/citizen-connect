@@ -176,7 +176,7 @@ export default function QueuePage() {
 
       {showToken && (
         <div className="fixed inset-0 z-30 overflow-auto bg-ink/70 p-4 backdrop-blur-sm" onClick={() => setShowToken(null)} role="dialog" aria-modal="true">
-          <div className="mx-auto max-w-md rounded-[28px] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="mx-auto max-w-md rounded-[var(--radius-hero)] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4" onClick={(e) => e.stopPropagation()}>
             <TokenCard token={showToken} />
             <Button variant="secondary" block className="mt-3" icon="close" onClick={() => setShowToken(null)}>
               {t("capture.close")}

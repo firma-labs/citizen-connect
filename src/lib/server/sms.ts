@@ -1,4 +1,5 @@
 import "server-only";
+import { translate, type Locale } from "@/lib/i18n/core";
 import type { SmsRecord } from "@/lib/types";
 
 // SMS on save, in the letter's language (PRD §4.1 #5). Production uses AWS End
@@ -28,13 +29,8 @@ export function getSmsSender(): SmsSender {
   }
 }
 
+/** SMS sent after staff save an application, in the letter's language (Marathi if it is another language). Text: messages/<lang>.json "sms.tokenReceived". */
 export function tokenSms(language: string, token: string, trackUrl: string): string {
-  switch (language) {
-    case "hi":
-      return `जनता दरबार: आपका आवेदन प्राप्त हुआ। टोकन क्र. ${token}. स्थिति देखें: ${trackUrl} - वन मंत्री कार्यालय, महाराष्ट्र`;
-    case "en":
-      return `Janata Darbar: Your application has been received. Token ${token}. Check status: ${trackUrl} - Office of the Forest Minister, Maharashtra`;
-    default:
-      return `जनता दरबार: आपला अर्ज प्राप्त झाला आहे. टोकन क्र. ${token}. स्थिती पहा: ${trackUrl} - वनमंत्री कार्यालय, महाराष्ट्र`;
-  }
+  const locale: Locale = language === "hi" || language === "en" ? language : "mr";
+  return translate(locale, "sms.tokenReceived", { token, url: trackUrl });
 }

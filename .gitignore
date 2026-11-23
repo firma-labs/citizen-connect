@@ -46,3 +46,6 @@ next-env.d.ts
 
 # OpenCV.js, copied from node_modules on install (scripts/copy-vendor.mjs)
 /public/vendor/
+
+# Review sheets exported by `npm run i18n:export` (messages/*.json is the source of truth)
+/translations/

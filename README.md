@@ -56,3 +56,4 @@ an error saying so. Mock or redacted letters only (PRD §9.1).
 - `src/lib/server/ai` — `Reader` / `Reasoner` interfaces + Claude (API/Bedrock) and mock engines
 - `src/lib/server/store` — JSON store: local files (`.data/`) or Vercel Blob (on Vercel)
 - `public/sw.js` — service worker (app shell offline)
+- `messages/` — all UI text, one ICU MessageFormat file per language (`en`, `mr`, `hi`); `npm run i18n:check`, `i18n:export` / `i18n:import` for review sheets — see `messages/README.md`

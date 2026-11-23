@@ -72,7 +72,7 @@ export default function Home() {
         )}
 
         <Button href="/capture" size="lg" block icon="camera" className="min-h-16 text-[1.15rem]">
-          {t("home.scan")}
+          {t("home.scan.label")}
         </Button>
         <p className="mt-2 text-center text-[0.92rem] text-ink-3">{t("home.scan.hint")}</p>
 

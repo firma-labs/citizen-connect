@@ -3,8 +3,7 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { useSettings } from "@/lib/client/settings";
-import { useI18n } from "@/lib/i18n";
-import { MESSAGES } from "@/lib/i18n/messages";
+import { translate, useI18n } from "@/lib/i18n";
 import { refLabel, venue } from "@/lib/reference";
 
 /**
@@ -69,7 +68,7 @@ export function TokenCard({ token, pages, issuedAt }: { token: string; pages?: n
         <p className="mt-6 text-left text-[1rem] leading-relaxed">{t("token.citizen")}</p>
         {locale !== "mr" && (
           <p lang="mr" className="mt-2 text-left text-[1rem] leading-relaxed text-ink-2">
-            {MESSAGES.mr["token.citizen"]}
+            {translate("mr", "token.citizen")}
           </p>
         )}
         <div className="mt-4 flex items-center justify-between border-t border-dashed border-rule-strong pt-3 text-[0.85rem] text-ink-3">
@@ -92,14 +91,14 @@ function Seal({ className = "" }: { className?: string }) {
       <circle cx="60" cy="60" r="34" fill="none" stroke="currentColor" strokeWidth="1.5" />
       <text fill="currentColor" fontSize="11.5" fontWeight="700" letterSpacing="1.5">
         <textPath href="#seal-arc" startOffset="0">
-          जनता दरबार ✦ वनमंत्री कार्यालय ✦ महाराष्ट्र ✦
+          {translate("mr", "seal.ring")}
         </textPath>
       </text>
       <text x="60" y="58" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="800">
-        प्राप्त
+        {translate("mr", "seal.received")}
       </text>
       <text x="60" y="75" textAnchor="middle" fill="currentColor" fontSize="9.5" fontWeight="600" letterSpacing="1">
-        RECEIVED
+        {translate("en", "seal.received")}
       </text>
     </svg>
   );

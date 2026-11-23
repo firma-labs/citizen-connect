@@ -1,0 +1,369 @@
+{
+  "app": {
+    "name": "Janata Darbar",
+    "office": "Office of the Forest Minister, Maharashtra"
+  },
+  "nav": {
+    "home": "Home",
+    "scan": "Scan",
+    "queue": "Queue",
+    "track": "Status",
+    "settings": "Settings"
+  },
+  "back": "Back",
+  "lang": {
+    "label": "Language"
+  },
+  "conn": {
+    "online": "Online",
+    "offline": "Offline",
+    "syncing": "Uploading",
+    "pending": "{n} to upload"
+  },
+  "status": {
+    "draft": "Scanning",
+    "queued": "Waiting to upload",
+    "captured": "Uploaded",
+    "reading": "Reading",
+    "read": "Ready to check",
+    "read_failed": "Could not read",
+    "routed": "Sent to department",
+    "in_progress": "Action in progress",
+    "closed": "Closed"
+  },
+  "home": {
+    "today": "Today's Darbar",
+    "setup": {
+      "title": "Add your name and venue",
+      "body": "Your name is recorded with every token and every edit."
+    },
+    "stat": {
+      "today": "Scanned today",
+      "toSync": "Waiting to upload",
+      "toVerify": "Ready to check"
+    },
+    "resume": {
+      "title": "Finish the open scan",
+      "body": "{n, plural, one {# page already photographed} other {# pages already photographed}}"
+    },
+    "scan": {
+      "label": "Scan an application",
+      "hint": "Photograph each page. The token is issued straight away."
+    },
+    "queue": "Queue and checking",
+    "track": "Check a status"
+  },
+  "capture": {
+    "title": "Scan pages",
+    "count": "Pages",
+    "first": "Photograph the first page",
+    "next": "Photograph page {n}",
+    "tip": "Lay the page on a darker surface and fit all of it in the frame, including the signature and mobile number.",
+    "gallery": "Choose from gallery",
+    "processing": "{n, plural, one {Preparing # photo…} other {Preparing # photos…}}",
+    "readError": "Could not read the photo: {msg}",
+    "discard": "Discard",
+    "discardConfirm": "Discard these photos?",
+    "issue": "Issue token",
+    "page": "Page {n}",
+    "delete": "Delete page",
+    "retake": "Retake",
+    "close": "Close",
+    "checkEdges": "Check edges",
+    "earlier": "Move earlier",
+    "later": "Move later"
+  },
+  "scan": {
+    "notFound": "The page edges weren't found. Use “Adjust corners” to straighten it.",
+    "corners": "Adjust corners",
+    "cornersHint": "Drag the four circles onto the page's corners",
+    "rotate": "Rotate",
+    "look": "Page look",
+    "clean": "Scan",
+    "photo": "Photo",
+    "lookHint": "Scan whitens the paper and removes shadows. Use Photo for photographs and ID pictures.",
+    "whole": "Whole photo",
+    "auto": "Found edges",
+    "cancel": "Cancel",
+    "apply": "Apply",
+    "working": "Straightening…",
+    "edit": "Edit page"
+  },
+  "token": {
+    "title": "Token issued",
+    "receipt": "Acknowledgement",
+    "yourToken": "Your token number",
+    "citizen": "Take a photo of this screen. Use this number and your mobile number to check the status of your application.",
+    "pages": "{n, plural, one {# page received} other {# pages received}}",
+    "saved": "Saved on this phone. It uploads and is read in the background — check it from the queue.",
+    "next": "Next citizen",
+    "queue": "Go to queue"
+  },
+  "queue": {
+    "title": "Queue",
+    "onPhone": "On this phone",
+    "others": "From other phones",
+    "empty": "Nothing scanned on this phone yet.",
+    "syncNow": "Upload now",
+    "offline": "Offline. Scans are saved and upload when the signal returns.",
+    "uploading": "Uploading…",
+    "uploaded": "{a} of {b} pages uploaded",
+    "check": "Check details",
+    "retry": "Read again",
+    "view": "View record",
+    "pages": "{n, plural, one {# page} other {# pages}}"
+  },
+  "verify": {
+    "title": "Check details",
+    "notOnServer": "Not on the server yet. It may still be uploading from the phone that scanned it.",
+    "reading": {
+      "title": "Reading the pages",
+      "wait": "Waiting for pages: {a} of {b} uploaded",
+      "body": "Usually under 30 seconds. The citizen already has the token and does not need to wait."
+    },
+    "failed": {
+      "title": "The pages could not be read",
+      "retry": "Read again",
+      "manual": "Enter details by hand"
+    },
+    "rescan": "Rescan pages",
+    "attention": {
+      "title": "{n} details need checking",
+      "one": "1 detail needs checking",
+      "body": "Compare these with the letter before saving.",
+      "none": "Everything was read clearly. Still compare the details with the letter."
+    },
+    "unreadable": "Words that could not be read",
+    "onPage": "page {p}",
+    "check": "Check against the letter",
+    "probably": "Probably right — check",
+    "pages": "Pages",
+    "openPage": "Open page {n}",
+    "transcription": "Full text of the letter",
+    "engine": "Read by {e} in {s} seconds",
+    "confirm": "I have checked these details against the letter.",
+    "save": "Save and send SMS",
+    "saving": "Saving…",
+    "nothingSaved": "Nothing is saved until you confirm.",
+    "limit": {
+      "title": "Your AI limit for today is reached",
+      "body": "Each person can run {n} AI readings a day. Another staff member can read it, or enter the details by hand."
+    },
+    "limitTotal": {
+      "title": "Today's overall AI limit is reached",
+      "body": "All staff together can run {n} AI readings a day. Enter the details by hand, or read again tomorrow."
+    }
+  },
+  "section": {
+    "applicant": "Applicant",
+    "letter": "Letter",
+    "routing": "Category and department",
+    "other": "Other details"
+  },
+  "field": {
+    "nameOriginal": "Name as written",
+    "nameRoman": "Name in English letters",
+    "mobile": {
+      "label": "Mobile number",
+      "invalid": "Not a valid 10-digit mobile number. The SMS will not be sent.",
+      "missing": "No mobile number. The citizen will not get an SMS."
+    },
+    "address": "Address",
+    "locality": "Village or area",
+    "taluka": "Taluka",
+    "district": "District",
+    "date": "Date on the letter",
+    "language": "Language of the letter",
+    "subject": "Subject",
+    "summaryEn": "Summary in English",
+    "summaryLocal": "Summary in the letter's language",
+    "category": "Category",
+    "department": "Department to act",
+    "secondary": "Also concerns",
+    "priority": {
+      "label": "Priority",
+      "reason": "Suggested because: {r}"
+    },
+    "followUps": "Earlier follow-ups",
+    "attachments": "Attachments",
+    "signatories": "Signed by",
+    "onePerLine": "One per line",
+    "days": "{d} days"
+  },
+  "saved": {
+    "title": "Saved and sent to the department",
+    "due": "Action due by {date}",
+    "also": "Also: {list}",
+    "sms": {
+      "label": "SMS to the citizen",
+      "logged": "Pilot: recorded, not sent — SMS templates are awaiting approval.",
+      "skipped": "Not sent — no valid mobile number.",
+      "failed": "Sending failed."
+    },
+    "history": "History ({n})",
+    "next": "Scan the next application",
+    "queue": "Back to queue"
+  },
+  "zoom": {
+    "page": "Page {a} of {b}",
+    "close": "Close"
+  },
+  "rescan": {
+    "title": "Rescan pages",
+    "body": "Retake a blurred or cut-off page, add a missed page, or remove a wrong one. The token stays the same.",
+    "loading": "Loading the current pages…",
+    "retake": "Retake",
+    "remove": "Remove",
+    "add": "Add page",
+    "new": "New",
+    "cancel": "Cancel",
+    "submit": "Upload and read again",
+    "note": "The current reading is replaced, and the rescan is recorded in the history.",
+    "starting": "Starting…",
+    "uploading": "Uploading page {a} of {b}…",
+    "reading": "Starting the reading…",
+    "error": "{msg}. Nothing is lost — try again."
+  },
+  "track": {
+    "title": "Application status",
+    "token": "Token number",
+    "mobile": {
+      "label": "Mobile number",
+      "hint": "The number written on your application"
+    },
+    "check": "Check status",
+    "checking": "Checking…",
+    "notFound": "The token and mobile number do not match. Check both and try again.",
+    "error": "The status could not be checked right now. Try again later.",
+    "received": "Received on {date}",
+    "stage": {
+      "received": "Received",
+      "routed": "Sent to department",
+      "in_progress": "Action in progress",
+      "closed": "Closed"
+    },
+    "expected": "Action expected by {date}",
+    "beingChecked": "Your application is being checked.",
+    "privacy": "Your details are used only to act on your application.",
+    "staff": "For staff"
+  },
+  "settings": {
+    "title": "Settings",
+    "staff": {
+      "label": "Your name",
+      "hint": "Recorded with every token and every edit."
+    },
+    "venue": "Darbar venue",
+    "language": "Language",
+    "hints": {
+      "label": "Show English labels under fields",
+      "hint": "Helps when staff read Marathi and English."
+    },
+    "autoCrop": {
+      "label": "Straighten pages and remove shadows",
+      "hint": "Finds the page edges, straightens the page and whitens the paper. You can adjust each page."
+    },
+    "save": "Save",
+    "saved": "Saved",
+    "system": "System check",
+    "store": "Storage",
+    "reader": "Reading",
+    "reasoner": "Routing",
+    "sms": "SMS",
+    "offline": "The server cannot be reached. Scanning still works and uploads later.",
+    "pilot": "Pilot: use sample or redacted letters only.",
+    "account": "Signed in",
+    "signOut": "Sign out",
+    "aiToday": "Your AI readings today",
+    "aiTotal": "All staff, today"
+  },
+  "login": {
+    "title": "Staff sign-in",
+    "body": "Sign in with your mobile number and the password you were given.",
+    "mobile": "Mobile number",
+    "password": "Password",
+    "submit": "Sign in",
+    "signingIn": "Signing in…",
+    "invalid": "The mobile number or password is not correct.",
+    "notConfigured": "Sign-in is not set up on this server. Ask the administrator.",
+    "error": "Could not sign in right now. Try again.",
+    "citizen": "Checking an application? Use the status page."
+  },
+  "env": {
+    "inApp": {
+      "title": "Open this in Chrome",
+      "body": "You are inside {app}. The camera and offline saving work reliably only in Chrome."
+    },
+    "openChrome": "Open in Chrome",
+    "continue": "Continue here"
+  },
+  "offline": {
+    "title": "You are offline",
+    "body": "Scanning still works. Photos are saved on this phone and upload when the signal returns."
+  },
+  "ref": {
+    "venue": {
+      "NM": "Navi Mumbai",
+      "TH": "Thane",
+      "PG": "Palghar"
+    },
+    "category": {
+      "water_supply": "Water supply",
+      "roads_drainage": "Roads & drainage",
+      "housing_property": "Housing / property",
+      "land_records": "Land records",
+      "pension_welfare": "Pension & welfare",
+      "ration_card": "Ration card",
+      "electricity": "Electricity",
+      "police_complaint": "Police complaint",
+      "wildlife_damage": "Wildlife damage compensation",
+      "forest_rights": "Forest land / forest rights",
+      "health": "Health",
+      "education": "Education",
+      "employment": "Employment",
+      "other": "Other"
+    },
+    "department": {
+      "NMMC": "Navi Mumbai Municipal Corporation",
+      "TMC": "Thane Municipal Corporation",
+      "CIDCO": "CIDCO",
+      "REV": "Revenue – Tahsildar / Collector",
+      "POL": "Police",
+      "FOR": "Forest Department",
+      "TRB": "Tribal Development",
+      "ZP": "Zilla Parishad, Palghar",
+      "MSEDCL": "MSEDCL – Electricity",
+      "FCS": "Food & Civil Supplies",
+      "PWD": "Public Works Department",
+      "HLT": "Public Health",
+      "OTH": "Minister's office – other"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "normal": "Normal",
+      "low": "Low"
+    },
+    "language": {
+      "mr": "Marathi",
+      "hi": "Hindi",
+      "en": "English",
+      "other": "Other"
+    },
+    "pageType": {
+      "letter": "Letter",
+      "enclosure": "Enclosure",
+      "id_document": "ID document",
+      "photo": "Photo",
+      "envelope": "Envelope",
+      "other": "Other"
+    }
+  },
+  "sms": {
+    "tokenReceived": "Janata Darbar: Your application has been received. Token {token}. Check status: {url} - Office of the Forest Minister, Maharashtra"
+  },
+  "seal": {
+    "ring": "Janata Darbar ✦ Forest Minister's Office ✦ Maharashtra ✦",
+    "received": "RECEIVED"
+  }
+}
