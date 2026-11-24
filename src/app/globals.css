@@ -239,50 +239,73 @@ textarea {
   }
 }
 
+/* Timing: the old screen is gone (opacity 0) by --vt-out, and the new one
+   only starts to appear after it, so the two never show at once. The old
+   screen fades with a curve that drops at the start, not one that lingers. */
+:root {
+  --vt-out: 70ms;
+  --vt-in-delay: 80ms;
+  --ease-out-fast: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* One image at a time, normal blending (the browser default adds the two
+   images together while they crossfade, which reads as both at full strength). */
+::view-transition-old(*),
+::view-transition-new(*) {
+  mix-blend-mode: normal;
+}
+/* Fallback for any transition without one of the classes below. */
+::view-transition-old(*) {
+  animation: var(--vt-out) var(--ease-out-fast) both vt-fade-out;
+}
+::view-transition-new(*) {
+  animation: 180ms ease-out var(--vt-in-delay) both vt-fade-in;
+}
+
 /* Deeper: old screen drifts left and fades; new one slides in from the right. */
 ::view-transition-old(.nav-forward) {
-  --vt-offset: -32px;
+  --vt-offset: -24px;
   animation:
-    100ms var(--ease-emphasized-accelerate) both vt-fade-out,
-    250ms var(--ease-emphasized-accelerate) both vt-slide-out;
+    var(--vt-out) var(--ease-out-fast) both vt-fade-out,
+    var(--vt-out) var(--ease-emphasized-accelerate) both vt-slide-out;
 }
 ::view-transition-new(.nav-forward) {
   --vt-offset: 48px;
   animation:
-    220ms ease-out 80ms both vt-fade-in,
+    200ms ease-out var(--vt-in-delay) both vt-fade-in,
     420ms var(--ease-emphasized-decelerate) both vt-slide-in;
 }
 
 /* Back: the mirror image. */
 ::view-transition-old(.nav-back) {
-  --vt-offset: 32px;
+  --vt-offset: 24px;
   animation:
-    100ms var(--ease-emphasized-accelerate) both vt-fade-out,
-    250ms var(--ease-emphasized-accelerate) both vt-slide-out;
+    var(--vt-out) var(--ease-out-fast) both vt-fade-out,
+    var(--vt-out) var(--ease-emphasized-accelerate) both vt-slide-out;
 }
 ::view-transition-new(.nav-back) {
   --vt-offset: -48px;
   animation:
-    220ms ease-out 80ms both vt-fade-in,
+    200ms ease-out var(--vt-in-delay) both vt-fade-in,
     420ms var(--ease-emphasized-decelerate) both vt-slide-in;
 }
 
 /* Between tabs: old fades out, new fades in growing slightly ("fade through"). */
 ::view-transition-old(.nav-tab) {
-  animation: 90ms ease-in both vt-fade-out;
+  animation: var(--vt-out) var(--ease-out-fast) both vt-fade-out;
 }
 ::view-transition-new(.nav-tab) {
   animation:
-    210ms ease-out 90ms both vt-fade-in,
-    300ms var(--ease-emphasized-decelerate) 90ms both vt-grow-in;
+    200ms ease-out var(--vt-in-delay) both vt-fade-in,
+    300ms var(--ease-emphasized-decelerate) var(--vt-in-delay) both vt-grow-in;
 }
 
-/* Everything else: a short crossfade. */
+/* Everything else: old out, then new in. */
 ::view-transition-old(.nav-fade) {
-  animation: 120ms ease-in both vt-fade-out;
+  animation: var(--vt-out) var(--ease-out-fast) both vt-fade-out;
 }
 ::view-transition-new(.nav-fade) {
-  animation: 200ms ease-out 60ms both vt-fade-in;
+  animation: 180ms ease-out var(--vt-in-delay) both vt-fade-in;
 }
 
 /* Reduced motion: screens switch instantly. */
