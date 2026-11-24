@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "@/components/ui/Link";
+import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 
 /** Footer for the citizen-facing pages (GIGW / UX4G): who runs the service and the required notices. */

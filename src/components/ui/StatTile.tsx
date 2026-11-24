@@ -1,4 +1,4 @@
-import Link from "@/components/ui/Link";
+import Link from "next/link";
 
 export type Tone = "sky" | "mint" | "violet" | "rose" | "peach";
 

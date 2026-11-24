@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "@/components/ui/Link";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ViewTransition, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listApps, subscribe } from "@/lib/client/db";
 import { officeSummary, useOfficeApplications } from "@/lib/client/office";
 import { useIsStaff } from "@/lib/client/session";
 import { onSyncState } from "@/lib/client/sync";
-import { SCREEN_TRANSITION } from "@/lib/client/transitions";
 import { LOCALES, useI18n, type MessageKey } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 
@@ -32,8 +31,7 @@ export function AppBar({
   return (
     <header
       className="sticky top-0 z-20 border-b border-rule bg-surface/90 backdrop-blur-md"
-      // Named so it stays put while the screen below changes (see globals.css).
-      style={{ paddingTop: "env(safe-area-inset-top)", viewTransitionName: "app-bar" }}
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       {/* Skip link (WCAG 2.4.1, GIGW): hidden until reached with the keyboard. */}
       <a
@@ -142,7 +140,7 @@ export function BottomNav() {
     <nav
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-20 border-t border-rule bg-surface/95 backdrop-blur-md lg:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)", viewTransitionName: "bottom-nav" }}
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto grid max-w-xl grid-cols-4">
         {NAV.map((n) => {
@@ -289,11 +287,7 @@ function LanguageMenu() {
   );
 }
 
-/**
- * Page body width: narrow for reading and forms, wide for side-by-side work.
- * The body animates in and out on navigation (forward, back, tab switch; see
- * lib/client/transitions.ts); the app bar and tab bar stay still.
- */
+/** Page body width: narrow for reading and forms, wide for side-by-side work. */
 export function Screen({
   children,
   wide,
@@ -304,14 +298,12 @@ export function Screen({
   padBottom?: boolean;
 }) {
   return (
-    <ViewTransition enter={SCREEN_TRANSITION} exit={SCREEN_TRANSITION} default="none">
-      <main
-        id="main"
-        tabIndex={-1}
-        className={`mx-auto w-full flex-1 px-4 pt-5 outline-none ${wide ? "max-w-6xl" : "max-w-2xl"} ${padBottom ? "pb-32 lg:pb-12" : ""}`}
-      >
-        {children}
-      </main>
-    </ViewTransition>
+    <main
+      id="main"
+      tabIndex={-1}
+      className={`mx-auto w-full flex-1 px-4 pt-5 outline-none ${wide ? "max-w-6xl" : "max-w-2xl"} ${padBottom ? "pb-32 lg:pb-12" : ""}`}
+    >
+      {children}
+    </main>
   );
 }
