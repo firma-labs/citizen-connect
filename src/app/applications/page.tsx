@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { useMemo, useState } from "react";
 import { ScanFab } from "@/components/ScanFab";
 import { AppBar, BottomNav, Screen } from "@/components/ui/AppBar";

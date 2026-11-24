@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { AppBar, Screen } from "@/components/ui/AppBar";
 import { Notice } from "@/components/ui/Notice";
 import { PublicFooter } from "@/components/PublicFooter";

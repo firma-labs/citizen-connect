@@ -175,3 +175,122 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- Screen transitions ----------------------------------------------------
+   React <ViewTransition> on <Screen> + the browser's View Transitions API.
+   Material 3 motion: "shared axis" (slide + fade) when going deeper or back,
+   "fade through" between the four main tabs. Old screen leaves fast; new one
+   arrives with the emphasized-decelerate curve. Browsers without support just
+   switch screens as before. */
+:root {
+  --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+/* Taps during an animation reach the live page instead of the overlay. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Only the screen body moves; everything else switches at once. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* The app bar and tab bar stay still above the moving content. */
+::view-transition-group(app-bar),
+::view-transition-group(bottom-nav) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(app-bar),
+::view-transition-old(bottom-nav) {
+  display: none;
+}
+::view-transition-new(app-bar),
+::view-transition-new(bottom-nav) {
+  animation: none;
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-slide-in {
+  from {
+    translate: var(--vt-offset) 0;
+  }
+}
+@keyframes vt-slide-out {
+  to {
+    translate: var(--vt-offset) 0;
+  }
+}
+@keyframes vt-grow-in {
+  from {
+    scale: 0.97;
+  }
+}
+
+/* Deeper: old screen drifts left and fades; new one slides in from the right. */
+::view-transition-old(.nav-forward) {
+  --vt-offset: -32px;
+  animation:
+    100ms var(--ease-emphasized-accelerate) both vt-fade-out,
+    250ms var(--ease-emphasized-accelerate) both vt-slide-out;
+}
+::view-transition-new(.nav-forward) {
+  --vt-offset: 48px;
+  animation:
+    220ms ease-out 80ms both vt-fade-in,
+    420ms var(--ease-emphasized-decelerate) both vt-slide-in;
+}
+
+/* Back: the mirror image. */
+::view-transition-old(.nav-back) {
+  --vt-offset: 32px;
+  animation:
+    100ms var(--ease-emphasized-accelerate) both vt-fade-out,
+    250ms var(--ease-emphasized-accelerate) both vt-slide-out;
+}
+::view-transition-new(.nav-back) {
+  --vt-offset: -48px;
+  animation:
+    220ms ease-out 80ms both vt-fade-in,
+    420ms var(--ease-emphasized-decelerate) both vt-slide-in;
+}
+
+/* Between tabs: old fades out, new fades in growing slightly ("fade through"). */
+::view-transition-old(.nav-tab) {
+  animation: 90ms ease-in both vt-fade-out;
+}
+::view-transition-new(.nav-tab) {
+  animation:
+    210ms ease-out 90ms both vt-fade-in,
+    300ms var(--ease-emphasized-decelerate) 90ms both vt-grow-in;
+}
+
+/* Everything else: a short crossfade. */
+::view-transition-old(.nav-fade) {
+  animation: 120ms ease-in both vt-fade-out;
+}
+::view-transition-new(.nav-fade) {
+  animation: 200ms ease-out 60ms both vt-fade-in;
+}
+
+/* Reduced motion: screens switch instantly. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
