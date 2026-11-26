@@ -1,10 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicBedrock } from "@anthropic-ai/bedrock-sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { partialParse } from "@anthropic-ai/sdk/_vendor/partial-json-parser/parser";
 import { z } from "zod";
 import { ReaderOutput, ReasonerOutput } from "@/lib/types";
 import { BRIEFER_SYSTEM, READER_SYSTEM, REASONER_SYSTEM } from "./prompts";
-import type { Briefer, Briefing, BriefingInput, PageImage, Reader, Reasoner } from "./types";
+import type { Briefer, Briefing, BriefingInput, OnProgress, PageImage, Reader, Reasoner } from "./types";
 
 // Claude via either the Claude API (pilot, mock letters) or Amazon Bedrock
 // (production). PRD §7.2: production must use the India geo cross-Region
@@ -54,13 +55,33 @@ function describeError(e: unknown, step: string): never {
   throw new AIError(`${step}: ${(e as Error)?.message ?? String(e)}`);
 }
 
+/**
+ * Structured output streams as JSON text. Hand the partial result to
+ * `onProgress` as it grows (parsed from the incomplete JSON), at most every
+ * `everyMs`, so the screen can show the reading as it happens.
+ */
+function streamProgress(stream: { on(event: "text", fn: (delta: string, snapshot: string) => void): unknown }, onProgress?: OnProgress, everyMs = 400) {
+  if (!onProgress) return;
+  let last = 0;
+  stream.on("text", (_delta, snapshot) => {
+    const now = Date.now();
+    if (now - last < everyMs) return;
+    last = now;
+    try {
+      onProgress(partialParse(snapshot));
+    } catch {
+      // not parseable yet; the next chunk will be
+    }
+  });
+}
+
 export class ClaudeReader implements Reader {
   readonly id: string;
   constructor(private cfg: ClaudeConfig) {
     this.id = `${cfg.provider}:${cfg.model}`;
   }
 
-  async read(pages: PageImage[]): Promise<ReaderOutput> {
+  async read(pages: PageImage[], onProgress?: OnProgress): Promise<ReaderOutput> {
     const content: Anthropic.ContentBlockParam[] = [];
     for (const p of pages) {
       content.push({ type: "text", text: `Page ${p.index + 1} of ${pages.length}:` });
@@ -72,13 +93,16 @@ export class ClaudeReader implements Reader {
     });
 
     try {
-      const msg = await getClient(this.cfg.provider).messages.parse({
+      // Streamed (same structured output), so the transcription and fields can be shown as they arrive.
+      const stream = getClient(this.cfg.provider).messages.stream({
         model: this.cfg.model,
         max_tokens: 16000,
         system: READER_SYSTEM,
         messages: [{ role: "user", content }],
         output_config: { effort: this.cfg.effort, format: zodOutputFormat(ReaderOutput) },
       });
+      streamProgress(stream, onProgress);
+      const msg = await stream.finalMessage();
       checkStop(msg, "Reader");
       if (!msg.parsed_output) throw new AIError("Reader: response did not match the expected format");
       return msg.parsed_output;
@@ -94,7 +118,7 @@ export class ClaudeReasoner implements Reasoner {
     this.id = `${cfg.provider}:${cfg.model}`;
   }
 
-  async reason(input: ReaderOutput): Promise<ReasonerOutput> {
+  async reason(input: ReaderOutput, onProgress?: OnProgress): Promise<ReasonerOutput> {
     const payload = {
       language: input.language,
       fields: input.fields,
@@ -102,13 +126,15 @@ export class ClaudeReasoner implements Reasoner {
       pages: input.pages.map((p) => ({ page: p.page_number, type: p.page_type, text: p.transcription })),
     };
     try {
-      const msg = await getClient(this.cfg.provider).messages.parse({
+      const stream = getClient(this.cfg.provider).messages.stream({
         model: this.cfg.model,
         max_tokens: 8000,
         system: REASONER_SYSTEM,
         messages: [{ role: "user", content: JSON.stringify(payload) }],
         output_config: { effort: this.cfg.effort, format: zodOutputFormat(ReasonerOutput) },
       });
+      streamProgress(stream, onProgress);
+      const msg = await stream.finalMessage();
       checkStop(msg, "Reasoner");
       if (!msg.parsed_output) throw new AIError("Reasoner: response did not match the expected format");
       return msg.parsed_output;

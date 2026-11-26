@@ -1,6 +1,6 @@
 import type { ReaderOutput, ReasonerOutput } from "@/lib/types";
 import type { DashboardStats } from "@/lib/dashboard";
-import type { Briefer, Briefing, BriefingInput, PageImage, Reader, Reasoner } from "./types";
+import type { Briefer, Briefing, BriefingInput, OnProgress, PageImage, Reader, Reasoner } from "./types";
 
 // Deterministic stand-in so the whole flow (capture → token → verify → SMS)
 // can be exercised on a phone without AI credentials. Returns a plausible
@@ -8,10 +8,50 @@ import type { Briefer, Briefing, BriefingInput, PageImage, Reader, Reasoner } fr
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Play back a finished result the way a streamed one arrives: string values
+ * grow a few characters at a time, in key order, so the live reading view can
+ * be seen without AI credentials. Takes about `totalMs`.
+ */
+async function playBack(result: Record<string, unknown>, onProgress: OnProgress, totalMs: number) {
+  const steps: (() => void)[] = [];
+  const out: Record<string, unknown> = {};
+  const walk = (src: unknown, set: (v: unknown) => void) => {
+    if (typeof src === "string") {
+      const n = Math.max(1, Math.ceil(src.length / 40));
+      for (let k = 1; k <= Math.ceil(src.length / n); k++) steps.push(() => set(src.slice(0, k * n)));
+    } else if (Array.isArray(src)) {
+      const arr: unknown[] = [];
+      steps.push(() => set(arr));
+      src.forEach((item, i) => walk(item, (v) => (arr[i] = v)));
+    } else if (src && typeof src === "object") {
+      const obj: Record<string, unknown> = {};
+      steps.push(() => set(obj));
+      for (const [k, v] of Object.entries(src)) walk(v, (x) => (obj[k] = x));
+    } else steps.push(() => set(src));
+  };
+  for (const [k, v] of Object.entries(result)) walk(v, (x) => (out[k] = x));
+  const every = Math.max(1, Math.floor(steps.length / (totalMs / 250)));
+  for (let i = 0; i < steps.length; i++) {
+    steps[i]();
+    if (i % every === 0) {
+      onProgress(structuredClone(out));
+      await sleep(250);
+    }
+  }
+  onProgress(structuredClone(out));
+}
+
 export class MockReader implements Reader {
   readonly id = "mock";
-  async read(pages: PageImage[]): Promise<ReaderOutput> {
-    await sleep(2500);
+  async read(pages: PageImage[], onProgress?: OnProgress): Promise<ReaderOutput> {
+    const result = this.result(pages);
+    if (onProgress) await playBack(result as unknown as Record<string, unknown>, onProgress, 9000);
+    else await sleep(2500);
+    return result;
+  }
+
+  private result(pages: PageImage[]): ReaderOutput {
     return {
       language: "mr",
       pages: pages.map((p, i) => ({
@@ -53,8 +93,14 @@ export class MockReader implements Reader {
 
 export class MockReasoner implements Reasoner {
   readonly id = "mock";
-  async reason(): Promise<ReasonerOutput> {
-    await sleep(800);
+  async reason(_input: ReaderOutput, onProgress?: OnProgress): Promise<ReasonerOutput> {
+    const result = this.result();
+    if (onProgress) await playBack(result as unknown as Record<string, unknown>, onProgress, 3000);
+    else await sleep(800);
+    return result;
+  }
+
+  private result(): ReasonerOutput {
     return {
       summary_en:
         "Suresh Baburao Patil of Manor, Palghar taluka, reports that a leopard killed his cow on 12 Oct 2026. He applied to the Forest Department on 15 Oct but no panchnama has been done yet. He requests wildlife-damage compensation.",

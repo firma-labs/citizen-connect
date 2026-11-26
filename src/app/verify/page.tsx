@@ -21,6 +21,7 @@ import { CATEGORIES, DEPARTMENTS, LANGUAGES, PAGE_TYPES, PRIORITIES, dept, refLa
 import { isValidMobile, normaliseMobile } from "@/lib/token";
 import { isRouted, type Application, type Confidence, type VerifiedFields } from "@/lib/types";
 import { useLeaveGuard } from "@/lib/client/nav";
+import { LiveReading, ScanBand, livePage } from "@/components/LiveReading";
 
 export default function VerifyPage() {
   return (
@@ -157,7 +158,8 @@ function Verify() {
     const tick = async () => {
       const a = await load();
       if (stop) return;
-      if (!a || a.status === "captured" || a.status === "reading") timer = setTimeout(tick, 3000);
+      // Every second while the AI reads (the live view follows it), else every 3 s until pages arrive.
+      if (!a || a.status === "captured" || a.status === "reading") timer = setTimeout(tick, a?.status === "reading" ? 1000 : 3000);
     };
     void tick();
     return () => {
@@ -254,6 +256,9 @@ function Verify() {
   const canRescan = !archived && (status === "read" || status === "read_failed" || status === "captured");
   const showForm = !archived && !rescanning && !!form && (status === "read" || (status === "read_failed" && manual));
   const done = !!status && isRouted(status);
+  // While the AI reads a page, that page is shown with the scan band (wide screens follow it).
+  const readingPage = status === "reading" && app ? livePage(app.reading_live, app.page_count) : null;
+  const shownPage = readingPage ?? viewing;
   const pageType = (i: number) => {
     const code = app?.extraction?.reader.pages[i]?.page_type;
     return code ? refLabel(PAGE_TYPES.find((p) => p.code === code), locale) : null;
@@ -306,6 +311,7 @@ function Verify() {
                     className="relative w-36 shrink-0 snap-start overflow-hidden rounded-[var(--radius-control)] border border-rule bg-surface"
                   >
                     <PageImage src={u} className="aspect-[3/4] w-full object-cover" lazy />
+                    {readingPage === i && <ScanBand />}
                     <span className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-2 text-[0.85rem] font-bold text-white">{i + 1}</span>
                     {pageType(i) && <span className="absolute inset-x-0 bottom-0 bg-ink/75 px-2 py-0.5 text-[0.8rem] text-white">{pageType(i)}</span>}
                   </button>
@@ -313,11 +319,12 @@ function Verify() {
               </div>
               <div className="hidden lg:block">
                 <button
-                  onClick={() => setZoom(viewing)}
-                  aria-label={t("verify.openPage", { n: viewing + 1 })}
-                  className="block w-full overflow-hidden card"
+                  onClick={() => setZoom(shownPage)}
+                  aria-label={t("verify.openPage", { n: shownPage + 1 })}
+                  className="relative block w-full overflow-hidden card"
                 >
-                  <PageImage src={pageUrls[Math.min(viewing, pageUrls.length - 1)]} className="max-h-[calc(100vh-11rem)] min-h-64 w-full object-contain" />
+                  <PageImage src={pageUrls[Math.min(shownPage, pageUrls.length - 1)]} className="max-h-[calc(100vh-11rem)] min-h-64 w-full object-contain" />
+                  {readingPage !== null && <ScanBand />}
                 </button>
                 {pageUrls.length > 1 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -325,8 +332,8 @@ function Verify() {
                       <button
                         key={u}
                         onClick={() => setViewing(i)}
-                        aria-current={viewing === i}
-                        className={`h-11 min-w-11 rounded-[var(--radius-control)] px-3 font-semibold ${viewing === i ? "bg-primary-container text-on-primary-container" : "border border-line text-ink-2 hover:bg-primary/8"}`}
+                        aria-current={shownPage === i}
+                        className={`h-11 min-w-11 rounded-[var(--radius-control)] px-3 font-semibold ${shownPage === i ? "bg-primary-container text-on-primary-container" : "border border-line text-ink-2 hover:bg-primary/8"}`}
                       >
                         {i + 1}
                         {pageType(i) ? <span className="ml-1.5 font-normal opacity-80">{pageType(i)}</span> : null}
@@ -361,19 +368,7 @@ function Verify() {
               />
             )}
 
-            {!archived && !rescanning && (status === "captured" || status === "reading") && (
-              <div className="flex items-start gap-4 rounded-[var(--radius-panel)] bg-sky-50 p-5" role="status">
-                <span className="mt-1 h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-sky-100 border-t-sky-500" aria-hidden />
-                <div>
-                  <p className="font-bold">{t("verify.reading.title")}</p>
-                  <p className="text-ink-2">
-                    {app && app.pages_received.length < app.page_count
-                      ? t("verify.reading.wait", { a: app.pages_received.length, b: app.page_count })
-                      : t("verify.reading.body")}
-                  </p>
-                </div>
-              </div>
-            )}
+            {!archived && !rescanning && app && (status === "captured" || status === "reading") && <LiveReading app={app} />}
 
             {!archived && !rescanning && status === "read_failed" && !form && (
               <Notice
