@@ -138,7 +138,7 @@ export function StepArt({ kind, size = 56 }: { kind: StepArtKind; size?: number 
           <rect width="64" height="64" fill="var(--color-indigo-100)" />
           <rect x="20" y="9" width="24" height="46" rx="5" fill="#fff" stroke="var(--color-indigo-800)" strokeWidth="2.2" />
           <path d="M29 13.5h6" stroke="var(--color-indigo-200)" strokeWidth="2" strokeLinecap="round" />
-          {/* the SMS with the token */}
+          {/* the WhatsApp message with the token */}
           <path d="M14 26a4 4 0 0 1 4-4h22a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H24l-5 4v-4h-1a4 4 0 0 1-4-4z" fill="var(--color-indigo-600)" />
           <path d="M20 28h18M20 33h11" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
           <circle cx="32" cy="49" r="2" fill="var(--color-indigo-200)" />

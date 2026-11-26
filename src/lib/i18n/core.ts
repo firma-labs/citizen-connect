@@ -1,6 +1,6 @@
 // Translations: one ICU MessageFormat resource file per language in
 // /messages (BCP 47 codes: mr, en, hi), read with use-intl (the core of
-// next-intl). Shared by the browser and the server (SMS text).
+// next-intl). Shared by the browser and the server (WhatsApp message text).
 // See messages/README.md for translators.
 
 import { createTranslator, type MessageKeys, type NestedKeyOf, type TranslationValues } from "use-intl/core";

@@ -1,7 +1,7 @@
 # Citizen Connect — Janata Darbar intake (pilot)
 
 Next.js PWA for the pilot scope in `.claude/plans/PRD-janata-darbar-citizen-connect.md`:
-scan pages in the phone browser → token + QR instantly → AI reads → staff verify → route + SMS → citizen tracks.
+scan pages in the phone browser → token + QR instantly → AI reads → staff verify → route + WhatsApp message → citizen tracks.
 
 **Pilot rule:** mock or redacted letters only (PRD §9.1).
 
@@ -26,8 +26,8 @@ The pilot calls the **Claude API directly** with `ANTHROPIC_API_KEY`, using Clau
 explicitly via `AI_READER` / `AI_REASONER`.
 
 Override per step with `AI_READER` / `AI_REASONER` (`mock`, `anthropic:<model>`, `bedrock:<model>`) for the
-PRD §7.3 comparison runs. Data: JSON files in `.data/` on your machine; Vercel Blob when deployed on Vercel. SMS is logged only
-(`SMS_PROVIDER=console`) until the TRAI DLT templates are approved.
+PRD §7.3 comparison runs. Data: JSON files in `.data/` on your machine; Vercel Blob when deployed on Vercel. The WhatsApp message is
+logged only (`WHATSAPP_PROVIDER=console`) until the WhatsApp Business number and message template are approved.
 
 ## Deploy to Vercel
 
@@ -52,7 +52,7 @@ always keeps using `.data/`.
    | `ANTHROPIC_MODEL` | no | Default `claude-opus-5`. |
    | `AI_DAILY_LIMIT_PER_USER`, `AI_DAILY_LIMIT_TOTAL` | no | Defaults 20 and 200 readings a day. |
    | `PILOT_ALLOW_DELETE=1` | no | Lets staff permanently delete archived test scans. Leave off in production. |
-   | `PUBLIC_BASE_URL` | no | Only if SMS/QR links must use a custom domain instead of the request's host. |
+   | `PUBLIC_BASE_URL` | no | Only if WhatsApp/QR links must use a custom domain instead of the request's host. |
 
 4. **Deploy**: push to `main` (Production) or any other branch (Preview), or run `vercel deploy`.
 5. **Check**: open `/api/health` after signing in — it should show `"store": "vercel blob"` and

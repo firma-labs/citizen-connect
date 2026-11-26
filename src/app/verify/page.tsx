@@ -698,7 +698,7 @@ function Verify() {
   function renderSaved(app: Application) {
     const v = app.verified!;
     const d = dept(v.department);
-    const sms = app.sms.at(-1);
+    const msg = app.sms.at(-1);
     const resolved = app.status === "closed";
     const late = isOverdue(app);
     return (
@@ -740,16 +740,16 @@ function Verify() {
           <Timeline audit={app.audit} />
         </section>
 
-        {sms && (
+        {msg && (
           <section className="card p-5">
             <h2 className="font-bold">
-              {t("saved.sms.label")}
-              {sms.to ? <span className="ml-2 font-normal text-ink-3">+91 {sms.to}</span> : null}
+              {t(msg.channel === "whatsapp" ? "saved.message.whatsapp" : "saved.message.sms")}
+              {msg.to ? <span className="ml-2 font-normal text-ink-3">+91 {msg.to}</span> : null}
             </h2>
             <p className="text-[0.92rem] text-ink-3">
-              {sms.status === "logged" ? t("saved.sms.logged") : sms.status === "skipped" ? t("saved.sms.skipped") : sms.status === "failed" ? t("saved.sms.failed") : null}
+              {msg.status === "logged" ? t("saved.message.logged") : msg.status === "skipped" ? t("saved.message.skipped") : msg.status === "failed" ? t("saved.message.failed") : null}
             </p>
-            <p className="mt-2 rounded-[var(--radius-control)] bg-surface p-3">{sms.body}</p>
+            <p className="mt-2 whitespace-pre-line rounded-[var(--radius-control)] bg-surface p-3">{msg.body}</p>
           </section>
         )}
 

@@ -2,7 +2,7 @@ import type { ReaderOutput, ReasonerOutput } from "@/lib/types";
 import type { DashboardStats } from "@/lib/dashboard";
 import type { Briefer, Briefing, BriefingInput, OnProgress, PageImage, Reader, Reasoner } from "./types";
 
-// Deterministic stand-in so the whole flow (capture → token → verify → SMS)
+// Deterministic stand-in so the whole flow (capture → token → verify → WhatsApp)
 // can be exercised on a phone without AI credentials. Returns a plausible
 // Marathi wildlife-damage letter with one deliberately low-confidence field.
 

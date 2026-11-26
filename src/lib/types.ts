@@ -136,7 +136,10 @@ export const OPEN_STATUSES: readonly ApplicationStatus[] = ["routed", "acknowled
 export const isRouted = (s: string) => (ROUTED_STATUSES as readonly string[]).includes(s);
 export const isOpenCase = (s: string) => (OPEN_STATUSES as readonly string[]).includes(s);
 
-export interface SmsRecord {
+/** A message to the citizen about their application (this phase: WhatsApp). */
+export interface CitizenMessage {
+  /** Missing on records saved before WhatsApp replaced SMS: those were SMS. */
+  channel?: "whatsapp" | "sms";
   to: string;
   language: string;
   body: string;
@@ -192,10 +195,11 @@ export interface Application {
   resolved_at?: string | null;
   resolved_by?: string | null;
   resolved_on_spot?: boolean;
-  /** Reminders sent to the department (recorded; delivery waits for SMS/email). */
+  /** Reminders sent to the department (recorded; delivery waits for WhatsApp/email). */
   reminders_sent?: number;
   last_reminder_at?: string | null;
-  sms: SmsRecord[];
+  /** Messages to the citizen. Stored as "sms", the name from before WhatsApp replaced SMS, so saved records still read. */
+  sms: CitizenMessage[];
   audit: AuditEntry[];
   /** Set while archived: hidden from the queue and counts, kept for the record, can be restored. */
   archived?: ArchiveRecord | null;

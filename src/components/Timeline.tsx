@@ -47,6 +47,12 @@ export function Timeline({ audit }: { audit: AuditEntry[] }) {
         rows.push({ at: a.at, by: a.by, tone: "sky", title: text("timeline.forwarded", { dept: deptName(to?.department), days: to?.sla_days ?? 0 }) });
         break;
       }
+      case a.action.startsWith("whatsapp_"): {
+        const status = a.action.slice("whatsapp_".length) as "sent" | "logged" | "skipped" | "failed";
+        rows.push({ at: a.at, by: a.by, tone: "ink", title: text(`timeline.whatsapp.${status}`) });
+        break;
+      }
+      // Applications saved before WhatsApp replaced SMS.
       case a.action.startsWith("sms_"):
         rows.push({ at: a.at, by: a.by, tone: "ink", title: text(a.action === "sms_sent" ? "timeline.smsSent" : a.action === "sms_skipped" ? "timeline.smsSkipped" : "timeline.smsLogged") });
         break;

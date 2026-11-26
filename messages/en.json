@@ -155,7 +155,7 @@
     "transcription": "Full text of the letter",
     "engine": "Read by {e} in {s} seconds",
     "confirm": "I have checked these details against the letter.",
-    "save": "Save and send SMS",
+    "save": "Save and send on WhatsApp",
     "saving": "Saving…",
     "nothingSaved": "Nothing is saved until you confirm.",
     "limit": {
@@ -192,9 +192,9 @@
     "nameOriginal": "Name as written",
     "nameRoman": "Name in English letters",
     "mobile": {
-      "label": "Mobile number",
-      "invalid": "Not a valid 10-digit mobile number. The SMS will not be sent.",
-      "missing": "No mobile number. The citizen will not get an SMS."
+      "label": "Mobile number (WhatsApp)",
+      "invalid": "Not a valid 10-digit mobile number. The WhatsApp message will not be sent.",
+      "missing": "No mobile number. The citizen will not get a WhatsApp message."
     },
     "address": "Address",
     "locality": "Village or area",
@@ -222,9 +222,10 @@
     "title": "Saved and sent to the department",
     "due": "Action due by {date}",
     "also": "Also: {list}",
-    "sms": {
-      "label": "SMS to the citizen",
-      "logged": "Pilot: recorded, not sent — SMS templates are awaiting approval.",
+    "message": {
+      "whatsapp": "WhatsApp message to the citizen",
+      "sms": "SMS to the citizen",
+      "logged": "Pilot: recorded, not sent — the message template is awaiting approval.",
       "skipped": "Not sent — no valid mobile number.",
       "failed": "Sending failed."
     },
@@ -300,7 +301,7 @@
     "store": "Storage",
     "reader": "Reading",
     "reasoner": "Routing",
-    "sms": "SMS",
+    "whatsapp": "WhatsApp",
     "offline": "The server cannot be reached. Scanning still works and uploads later.",
     "pilot": "Pilot: use sample or redacted letters only.",
     "account": "Signed in",
@@ -410,7 +411,7 @@
       "other": "Other"
     }
   },
-  "sms": {
+  "whatsapp": {
     "tokenReceived": "Janata Darbar: Your application has been received. Token {token}. Check status: {url} - Office of the Forest Minister, Maharashtra"
   },
   "seal": {
@@ -430,7 +431,7 @@
     },
     "noteLabel": "Note (optional)",
     "noteHint": "For example, the token it duplicates.",
-    "routedWarning": "This was already sent to the department, and an SMS may have gone to the citizen.",
+    "routedWarning": "This was already sent to the department, and a WhatsApp message may have gone to the citizen.",
     "confirm": "Archive",
     "cancel": "Cancel",
     "error": "Could not archive: {msg}"
@@ -466,7 +467,7 @@
     "optional": "optional",
     "toDepartment": "Department",
     "chooseDepartment": "Choose a department",
-    "remindNote": "The reminder is recorded in the timeline. Sending it by SMS or email starts once those are switched on.",
+    "remindNote": "The reminder is recorded in the timeline. Sending it by WhatsApp or email starts once those are switched on.",
     "transferNote": "The new department's response time starts today.",
     "error": "Could not save: {msg}"
   },
@@ -488,7 +489,13 @@
     "resolvedOnSpot": "Resolved on the spot by the Minister",
     "reopened": "Reopened",
     "archived": "Archived",
-    "restored": "Restored"
+    "restored": "Restored",
+    "whatsapp": {
+      "sent": "Token sent on WhatsApp",
+      "logged": "Token WhatsApp message recorded (not sent in the pilot)",
+      "skipped": "No WhatsApp message — no valid mobile number",
+      "failed": "Token WhatsApp message could not be sent"
+    }
   },
   "apps": {
     "title": "Applications",
@@ -673,7 +680,7 @@
     "lead": "Bring your letter to the Janata Darbar. Staff photograph it, you get a token number on the spot, and you can follow it until the department resolves it.",
     "status": {
       "title": "Already handed in an application?",
-      "hint": "Enter the token number from your SMS or slip.",
+      "hint": "Enter the token number from your WhatsApp message or slip.",
       "check": "Check status"
     },
     "how": {
@@ -688,7 +695,7 @@
       },
       "s3": {
         "title": "Get a token",
-        "body": "Your token number comes by SMS straight away."
+        "body": "Your token number comes on WhatsApp straight away."
       },
       "s4": {
         "title": "Sent to the right officer",
@@ -742,7 +749,7 @@
       "name": "Sunita P.",
       "place": "Ghansoli, Navi Mumbai",
       "issue": "Water supply",
-      "quote": "For three months our society got water for barely half an hour a day. I got a token at the Darbar and followed it by SMS. The supply was restored in 12 days."
+      "quote": "For three months our society got water for barely half an hour a day. I got a token at the Darbar and followed it on WhatsApp. The supply was restored in 12 days."
     },
     "crop": {
       "name": "Ramesh K.",

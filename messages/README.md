@@ -1,7 +1,7 @@
 # Translations
 
 All text shown by the app — screens, buttons, reference lists (venues,
-categories, departments), the SMS and the token slip — lives here, one file per
+categories, departments), the WhatsApp message and the token slip — lives here, one file per
 language:
 
 | File | Language | Status |
@@ -23,8 +23,8 @@ Weblate, so the files can go straight into a translation tool.
   `{n, plural, one {# page received} other {# pages received}}`
 - Plain, short wording. Name the same action the same way everywhere (the
   button "Issue token" and the screen after it both say "token").
-- `sms.tokenReceived` must match the SMS template registered with TRAI DLT
-  word for word — change both together.
+- `whatsapp.tokenReceived` must match the WhatsApp message template approved
+  for the business number word for word — change both together.
 - Keep the `✦` separators in `seal.ring` (the round stamp on the token slip).
 
 ## Review workflow (spreadsheet)
