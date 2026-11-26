@@ -32,7 +32,7 @@ PRD §7.3 comparison runs. Data: JSON files in `.data/` on your machine; Vercel 
 ## Deploy to Vercel
 
 The repo deploys as-is: Next.js is detected, `vercel.json` runs the functions in Mumbai (`bom1`), and the
-build copies OpenCV.js into `public/vendor/` and checks the translations (`prebuild`). Data on Vercel lives in
+build copies OpenCV.js and the page-corner model into `public/vendor/` and checks the translations (`prebuild`). Data on Vercel lives in
 a private **Vercel Blob** store — the same JSON-per-application layout as `.data/` locally. Your machine
 always keeps using `.data/`.
 
@@ -71,7 +71,7 @@ Notes:
 
 ## Layout
 
-- `src/app/capture` — camera capture (phone camera app via file input), page straightening ([scanic](https://www.npmjs.com/package/scanic)) and shadow removal ([OpenCV.js](https://www.npmjs.com/package/@techstark/opencv-js), served from `public/vendor`, copied on `npm install`), token + QR
+- `src/app/capture` — camera capture (phone camera app via file input), page detection and straightening ([scanic](https://www.npmjs.com/package/scanic) with its neural corner model [scanic-ml](https://www.npmjs.com/package/scanic-ml), edges snapped with OpenCV) and shadow removal ([OpenCV.js](https://www.npmjs.com/package/@techstark/opencv-js), served from `public/vendor`, copied on `npm install`), token + QR
 - `src/app/queue`, `src/app/verify` — sync status, AI result review with low-confidence highlights, save & route
 - `src/app/verify` (saved view) — the record: department follow-up (acknowledged, in progress, reminder, send to another department, resolved / reopen) and the timeline
 - `src/app/applications` — all routed applications: search and filter by department, status (open / overdue / resolved) and Darbar session
