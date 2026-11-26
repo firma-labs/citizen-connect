@@ -106,30 +106,46 @@ function StatusCheck() {
 
 const STEPS: { art: StepArtKind; title: MessageKey; body: MessageKey }[] = [
   { art: "scan", title: "welcome.how.s1.title", body: "welcome.how.s1.body" },
-  { art: "token", title: "welcome.how.s2.title", body: "welcome.how.s2.body" },
-  { art: "track", title: "welcome.how.s3.title", body: "welcome.how.s3.body" },
+  { art: "read", title: "welcome.how.s2.title", body: "welcome.how.s2.body" },
+  { art: "token", title: "welcome.how.s3.title", body: "welcome.how.s3.body" },
+  { art: "route", title: "welcome.how.s4.title", body: "welcome.how.s4.body" },
+  { art: "track", title: "welcome.how.s5.title", body: "welcome.how.s5.body" },
 ];
 
+/**
+ * The journey from letter to resolution, all steps at once (a sequence reads
+ * best when nothing is hidden): a connected vertical stepper on phones and
+ * tablets, one row with arrows on wide screens.
+ */
 function HowItWorks() {
   const { t, num } = useI18n();
+  const last = STEPS.length - 1;
   return (
     <section aria-labelledby="how" className="mt-10">
       <h2 id="how" className="text-[1.35rem] font-bold">
         {t("welcome.how.title")}
       </h2>
-      <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+      <ol className="card mt-4 p-5 lg:grid lg:grid-cols-5 lg:gap-4 lg:p-6">
         {STEPS.map((s, i) => (
-          <li key={s.title} className="card flex items-start gap-4 p-4 sm:flex-col sm:gap-3 sm:p-5">
-            {/* Illustration with the step number on its corner. */}
-            <span className="relative shrink-0">
-              <StepArt kind={s.art} />
-              <span className="absolute -left-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-primary px-1 font-display text-[0.8rem] font-bold text-on-primary ring-[3px] ring-surface-container">
+          <li key={s.title} className={`relative flex gap-4 lg:flex-col lg:gap-3 ${i < last ? "pb-6 lg:pb-0" : ""}`}>
+            {/* Line to the next step (phones), arrow to the next step (wide screens). */}
+            {i < last && (
+              <>
+                <span aria-hidden className="absolute bottom-0 left-[23px] top-14 w-0.5 rounded-full bg-indigo-200 lg:hidden" />
+                <span aria-hidden className="absolute -right-3.5 top-3.5 hidden text-indigo-600/60 lg:block">
+                  <Icon name="next" size={22} />
+                </span>
+              </>
+            )}
+            <span className="relative shrink-0 self-start">
+              <StepArt kind={s.art} size={48} />
+              <span className="absolute -left-1.5 -top-1.5 grid h-[22px] min-w-[22px] place-items-center rounded-full bg-primary px-1 font-display text-[0.75rem] font-bold text-on-primary ring-[3px] ring-surface-container">
                 {num(i + 1)}
               </span>
             </span>
-            <div className="min-w-0 pt-0.5">
+            <div className="min-w-0 pt-0.5 lg:pt-0">
               <p className="font-semibold leading-snug">{t(s.title)}</p>
-              <p className="mt-1 text-[0.95rem] leading-relaxed text-ink-2">{t(s.body)}</p>
+              <p className="mt-0.5 text-[0.93rem] leading-relaxed text-ink-2">{t(s.body)}</p>
             </div>
           </li>
         ))}

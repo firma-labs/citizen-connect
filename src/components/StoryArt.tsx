@@ -82,7 +82,7 @@ export function InitialsAvatar({ name, size = 40 }: { name: string; size?: numbe
   );
 }
 
-export type StepArtKind = "scan" | "token" | "track";
+export type StepArtKind = "scan" | "read" | "token" | "route" | "track";
 
 /** Illustrations for the "How it works" steps, in the same style as StoryArt. Decorative. */
 export function StepArt({ kind, size = 56 }: { kind: StepArtKind; size?: number }) {
@@ -103,6 +103,34 @@ export function StepArt({ kind, size = 56 }: { kind: StepArtKind; size?: number 
             strokeLinecap="round"
             fill="none"
           />
+        </>
+      )}
+      {kind === "read" && (
+        <>
+          <rect width="64" height="64" fill="var(--color-marigold-50)" />
+          {/* the letter being read, with the AI sparkle and a Devanagari letter */}
+          <rect x="13" y="14" width="26" height="36" rx="2.5" fill="#fff" stroke="var(--color-marigold-200)" strokeWidth="1.5" />
+          <path d="M18 22h16M18 27.5h16M18 33h11M18 38.5h14M18 44h9" stroke="var(--color-marigold-200)" strokeWidth="2.2" strokeLinecap="round" />
+          <circle cx="44" cy="40" r="11" fill="var(--color-marigold-500)" />
+          <text x="44" y="45" textAnchor="middle" fontSize="15" fontWeight="700" fill="#fff" style={{ fontFamily: "inherit" }}>
+            अ
+          </text>
+          <path d="M47 11l1.6 4.4L53 17l-4.4 1.6L47 23l-1.6-4.4L41 17l4.4-1.6z" fill="var(--color-indigo-600)" />
+          <path d="M55 24l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="var(--color-indigo-600)" />
+        </>
+      )}
+      {kind === "route" && (
+        <>
+          <rect width="64" height="64" fill="var(--color-sky-100)" />
+          {/* the department's office, with the response deadline */}
+          <path d="M9 24l21-11 21 11z" fill="var(--color-sky-700)" />
+          <rect x="11" y="24" width="38" height="3" fill="var(--color-sky-700)" />
+          {[14, 22, 30, 38].map((x) => (
+            <rect key={x} x={x} y="29" width="5" height="16" rx="1" fill="var(--color-sky-500)" />
+          ))}
+          <rect x="9" y="46" width="42" height="4" rx="1" fill="var(--color-sky-700)" />
+          <circle cx="47" cy="46" r="10" fill="#fff" stroke="var(--color-marigold-500)" strokeWidth="2.4" />
+          <path d="M47 40.5V46l3.5 2.5" stroke="var(--color-marigold-700)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
         </>
       )}
       {kind === "token" && (

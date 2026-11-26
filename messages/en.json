@@ -670,15 +670,23 @@
       "title": "How it works",
       "s1": {
         "title": "Hand over your letter",
-        "body": "At the Darbar, staff photograph every page. You keep your original."
+        "body": "Staff photograph every page on a phone. You keep the original."
       },
       "s2": {
-        "title": "Get a token",
-        "body": "You get a token number by SMS straight away."
+        "title": "Read in your language",
+        "body": "AI reads it in Marathi, Hindi or English, and staff check every detail."
       },
       "s3": {
-        "title": "Follow it",
-        "body": "The application goes to the right department. Check its progress here at any time."
+        "title": "Get a token",
+        "body": "Your token number comes by SMS straight away."
+      },
+      "s4": {
+        "title": "Sent to the right officer",
+        "body": "It goes to the right department, with a deadline to respond."
+      },
+      "s5": {
+        "title": "Resolved, and you are told",
+        "body": "Follow every step here, and hear when it is closed."
       }
     },
     "figures": {
