@@ -657,5 +657,74 @@
     "crop": "Crop damage",
     "pension": "Pension stopped",
     "leopard": "Leopard petition"
+  },
+  "welcome": {
+    "tagline": "Your application, heard and followed through",
+    "lead": "Bring your letter to the Janata Darbar. Staff photograph it, you get a token number on the spot, and you can follow it until the department resolves it.",
+    "status": {
+      "title": "Already handed in an application?",
+      "hint": "Enter the token number from your SMS or slip.",
+      "check": "Check status"
+    },
+    "how": {
+      "title": "How it works",
+      "s1": {
+        "title": "Hand over your letter",
+        "body": "At the Darbar, staff photograph every page. You keep your original."
+      },
+      "s2": {
+        "title": "Get a token",
+        "body": "You get a token number by SMS straight away."
+      },
+      "s3": {
+        "title": "Follow it",
+        "body": "The application goes to the right department. Check its progress here at any time."
+      }
+    },
+    "figures": {
+      "title": "So far",
+      "received": "Applications received",
+      "resolved": "Resolved",
+      "days": "Average days to resolve"
+    },
+    "stories": {
+      "title": "Citizens' stories",
+      "sample": "Sample",
+      "note": "Illustrative examples for this demonstration. These are not real citizens.",
+      "days": "Resolved in {d} days",
+      "cta": "Check your own application"
+    },
+    "staff": {
+      "title": "For office staff",
+      "body": "Scan, check and forward applications, and follow them up.",
+      "button": "Staff sign in",
+      "open": "Open the staff app"
+    }
+  },
+  "story": {
+    "water": {
+      "name": "Sunita P.",
+      "place": "Ghansoli, Navi Mumbai",
+      "issue": "Water supply",
+      "quote": "For three months our society got water for barely half an hour a day. I got a token at the Darbar and followed it by SMS. The supply was restored in 12 days."
+    },
+    "crop": {
+      "name": "Ramesh K.",
+      "place": "Shahapur, Thane",
+      "issue": "Crop damage",
+      "quote": "Unseasonal rain ruined my paddy. The panchanama was done within a week of the Darbar, and I could see every step on the status page."
+    },
+    "pension": {
+      "name": "Shantabai M.",
+      "place": "Palghar",
+      "issue": "Pension",
+      "quote": "My pension had stopped and I did not know whom to ask. My grandson checked the token on his phone. The pension started again the next month."
+    },
+    "leopard": {
+      "name": "Vasant J.",
+      "place": "Jawhar, Palghar",
+      "issue": "Wildlife",
+      "quote": "A leopard was seen near our hamlet several nights in a row. After the Darbar, the forest department sent a team and set up a cage within days."
+    }
   }
 }

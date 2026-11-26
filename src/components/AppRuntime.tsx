@@ -10,7 +10,7 @@ import { Button } from "./ui/Button";
 import { Notice } from "./ui/Notice";
 
 // Pages anyone may see without signing in (the proxy allows the same ones).
-const PUBLIC_PATHS = ["/login", "/track", "/offline", "/privacy", "/terms", "/accessibility"];
+const PUBLIC_PATHS = ["/welcome", "/login", "/track", "/offline", "/privacy", "/terms", "/accessibility"];
 
 /**
  * Sends a screen that is already open to sign-in once the server says this
@@ -33,6 +33,8 @@ function useSessionGuard() {
         if (!res.ok) return;
         const me: { mode: string; signedIn: boolean } = await res.json();
         if (me.mode !== "open" && !me.signedIn && !stopped) {
+          // Same as the proxy: Home signed out shows the public landing page.
+          if (window.location.pathname === "/") return window.location.replace("/welcome");
           const next = encodeURIComponent(window.location.pathname + window.location.search);
           window.location.replace(`/login?next=${next}`);
         }

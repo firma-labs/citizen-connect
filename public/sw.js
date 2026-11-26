@@ -9,7 +9,7 @@ const DEV = new URL(self.location.href).searchParams.get("dev") === "1";
 const VERSION = "cc-v2";
 const SHELL = `${VERSION}-shell`;
 const STATIC = `${VERSION}-static`;
-const SHELL_ROUTES = ["/", "/capture", "/queue", "/applications", "/dashboard", "/verify", "/track", "/settings", "/offline", "/login", "/privacy", "/terms", "/accessibility"];
+const SHELL_ROUTES = ["/", "/welcome", "/capture", "/queue", "/applications", "/dashboard", "/verify", "/track", "/settings", "/offline", "/login", "/privacy", "/terms", "/accessibility"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
