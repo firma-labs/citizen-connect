@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyToken } from "@/components/ui/CopyToken";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageEditor } from "@/components/PageEditor";
 import { VenuePicker } from "@/components/VenuePicker";
@@ -246,7 +247,12 @@ export default function CapturePage() {
             <p className="text-ink-3">{t("capture.count")}</p>
             <p className="font-display text-[2.4rem] font-bold leading-none tracking-tight text-indigo-800">{pages.length}</p>
           </div>
-          {token && <p className="token pb-1 text-[0.95rem] text-ink-3">{token}</p>}
+          {token && (
+            <div className="flex items-center gap-0.5">
+              <p className="token text-[0.95rem] text-ink-3">{token}</p>
+              <CopyToken token={token} size={16} />
+            </div>
+          )}
         </div>
 
         <button

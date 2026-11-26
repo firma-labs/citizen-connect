@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyToken } from "@/components/ui/CopyToken";
 import { useEffect, useState } from "react";
 import { ArchiveDialog, ArchivedNotice } from "@/components/Archive";
 import { TokenCard } from "@/components/TokenCard";
@@ -134,7 +135,10 @@ export default function QueuePage() {
             <ul className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0">
               {archived.map((s) => (
                 <li key={s.token} className="card p-4">
-                  <p className="token mb-2 text-[1.05rem]">{s.token}</p>
+                  <div className="mb-2 flex items-center gap-0.5">
+                    <p className="token text-[1.05rem]">{s.token}</p>
+                    <CopyToken token={s.token} />
+                  </div>
                   <ArchivedNotice token={s.token} archived={s.archived!} onRestored={reload} onDeleted={reload} compact />
                 </li>
               ))}
@@ -213,9 +217,12 @@ function Item({
   return (
     <li className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button onClick={onShowToken} className="token flex items-center gap-1.5 text-[1.1rem] text-ink underline-offset-4 hover:underline">
-          {token}
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button onClick={onShowToken} className="token flex items-center gap-1.5 text-[1.1rem] text-ink underline-offset-4 hover:underline">
+            {token}
+          </button>
+          <CopyToken token={token} />
+        </div>
         <StatusTag status={status} />
       </div>
       <p className="mt-1 text-[0.9rem] text-ink-3">{meta.join(" · ")}</p>

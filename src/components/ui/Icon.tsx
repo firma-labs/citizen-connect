@@ -27,6 +27,7 @@ const PATHS: Record<string, string> = {
   archive: "M4 5h16v4H4zM5 9v10h14V9M10 13h4",
   rotate: "M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5",
   corners: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
+  copy: "M9 9h10v11H9zM5 15V4h10v2",
 };
 
 export type IconName = keyof typeof PATHS;

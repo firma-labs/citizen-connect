@@ -104,7 +104,10 @@
     "saved": "Saved on this phone. It uploads and is read in the background — check it from the queue.",
     "next": "Next citizen",
     "queue": "Go to queue",
-    "watch": "View reading progress"
+    "watch": "View reading progress",
+    "copy": "Copy token number {token}",
+    "copied": "Token {token} copied",
+    "copyFailed": "Couldn't copy. Select the token and copy it."
   },
   "queue": {
     "title": "Queue",

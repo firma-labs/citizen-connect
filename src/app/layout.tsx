@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans, Poppins } from "next/font/google";
 import { AppRuntime } from "@/components/AppRuntime";
+import { Toaster } from "@/components/ui/Toast";
 import "./globals.css";
 
 // Noto Sans (UX4G's typeface): body text and form fields — Google's reference
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <AppRuntime />
         {children}
+        <Toaster />
       </body>
     </html>
   );
