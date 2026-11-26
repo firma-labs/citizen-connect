@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PublicFooter } from "@/components/PublicFooter";
 import { InitialsAvatar, StoryArt } from "@/components/StoryArt";
 import { AppBar, Screen } from "@/components/ui/AppBar";
@@ -334,10 +334,39 @@ function MonthlyTrend({ monthly }: { monthly: ResolutionFigures["monthly"] }) {
   );
 }
 
+/**
+ * Sample stories. Phones: a swipe carousel (one card at a time, the next one
+ * peeking in, no scrollbar) with dots that show where you are and jump to a
+ * story. Wider screens: a two-column grid.
+ */
 function Stories() {
   const { t, num } = useI18n();
+  const track = useRef<HTMLUListElement>(null);
+  const [current, setCurrent] = useState(0);
+  const total = SAMPLE_STORIES.length;
+
+  // Which card is centred, from the scroll position (works for swipes and dot taps alike).
+  function onScroll() {
+    const el = track.current;
+    if (!el) return;
+    const cards = [...el.children] as HTMLElement[];
+    const centre = el.scrollLeft + el.clientWidth / 2;
+    let best = 0;
+    cards.forEach((c, i) => {
+      if (Math.abs(c.offsetLeft + c.offsetWidth / 2 - centre) < Math.abs(cards[best].offsetLeft + cards[best].offsetWidth / 2 - centre)) best = i;
+    });
+    setCurrent(best);
+  }
+
+  function goTo(i: number) {
+    const el = track.current;
+    const card = el?.children[i] as HTMLElement | undefined;
+    if (!el || !card) return;
+    el.scrollTo({ left: card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2, behavior: "smooth" });
+  }
+
   return (
-    <section aria-labelledby="stories" className="mt-10">
+    <section aria-labelledby="stories" aria-roledescription="carousel" className="mt-10">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 id="stories" className="text-[1.35rem] font-bold">
           {t("welcome.stories.title")}
@@ -345,17 +374,24 @@ function Stories() {
         <SampleChip />
       </div>
       <p className="mt-1 text-[0.92rem] text-ink-3">{t("welcome.stories.note")}</p>
-      {/* Swipe through on phones; a grid on wider screens. */}
-      <ul className="-mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0">
-        {SAMPLE_STORIES.map((s) => (
-          <li key={s.id} className="card flex w-[85%] shrink-0 snap-center flex-col p-5 sm:w-auto">
+      <ul
+        ref={track}
+        onScroll={onScroll}
+        className="-mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-smooth px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+      >
+        {SAMPLE_STORIES.map((s, i) => (
+          <li
+            key={s.id}
+            aria-roledescription="slide"
+            aria-label={t("welcome.stories.slide", { n: num(i + 1), total: num(total) })}
+            className="card flex w-[85%] shrink-0 snap-center snap-always flex-col p-5 sm:w-auto"
+          >
             <div className="flex items-center gap-3">
               <StoryArt art={s.art} />
               <div className="min-w-0 flex-1">
-                <p className="font-semibold">{t(s.issue)}</p>
+                <p className="font-semibold leading-snug">{t(s.issue)}</p>
                 <p className="text-[0.88rem] font-semibold text-mint-700">{t("welcome.stories.days", { d: num(s.days) })}</p>
               </div>
-              <SampleChip />
             </div>
             <blockquote className="mt-4 flex-1 text-[1.02rem] leading-relaxed text-ink">
               <span aria-hidden className="mr-0.5 font-display text-[1.6rem] leading-none text-indigo-600">
@@ -365,14 +401,30 @@ function Stories() {
             </blockquote>
             <div className="mt-4 flex items-center gap-3">
               <InitialsAvatar name={t(s.name)} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="font-semibold leading-tight">{t(s.name)}</p>
                 <p className="text-[0.88rem] text-ink-3">{t(s.place)}</p>
               </div>
+              <SampleChip />
             </div>
           </li>
         ))}
       </ul>
+      {/* Dots: phones only (the grid shows every story on wider screens). */}
+      <div className="mt-3 flex justify-center gap-1 sm:hidden">
+        {SAMPLE_STORIES.map((s, i) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => goTo(i)}
+            aria-label={t("welcome.stories.goTo", { n: num(i + 1), total: num(total) })}
+            aria-current={i === current ? "true" : undefined}
+            className="grid h-8 w-8 place-items-center rounded-full"
+          >
+            <span className={`block h-2 rounded-full transition-all duration-200 ${i === current ? "w-6 bg-primary" : "w-2 bg-ink/25"}`} />
+          </button>
+        ))}
+      </div>
       <p className="mt-3 text-[0.92rem]">
         <Link href="/track" className="font-semibold text-primary underline-offset-4 hover:underline">
           {t("welcome.stories.cta")}

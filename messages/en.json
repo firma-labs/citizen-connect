@@ -708,7 +708,9 @@
       "sample": "Sample",
       "note": "Illustrative examples for this demonstration. These are not real citizens.",
       "days": "Resolved in {d} days",
-      "cta": "Check your own application"
+      "cta": "Check your own application",
+      "slide": "Story {n} of {total}",
+      "goTo": "Show story {n} of {total}"
     },
     "staff": {
       "title": "For office staff",
