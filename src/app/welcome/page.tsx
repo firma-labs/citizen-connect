@@ -313,9 +313,10 @@ function MonthlyTrend({ monthly }: { monthly: ResolutionFigures["monthly"] }) {
               // On phones every other month is labelled, always including the latest.
               const phoneLabel = n <= 6 || (last - i) % 2 === 0;
               const firstPhoneLabel = n <= 6 ? 0 : last % 2;
-              // The year goes under the first labelled month and under every January.
+              // Wide screens: the year under every month. Phones (narrow columns): only
+              // under the first labelled month and every January.
               const jan = m.month.endsWith("-01");
-              const yearWide = i === 0 || jan;
+              const yearWide = true;
               const yearPhone = phoneLabel && (i === firstPhoneLabel || jan);
               const yearCls = yearWide && yearPhone ? "" : yearWide ? "max-sm:invisible" : yearPhone ? "sm:invisible" : "invisible";
               return (
