@@ -9,7 +9,7 @@ export default function Offline() {
   const { t } = useI18n();
   return (
     <>
-      <AppBar />
+      <AppBar back="/" />
       <Screen>
         <div className="mx-auto max-w-md py-12 text-center">
           <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-sky-100 to-indigo-100 text-indigo-800">

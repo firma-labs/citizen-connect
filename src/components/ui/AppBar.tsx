@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { listApps, subscribe } from "@/lib/client/db";
+import { canGoBackInApp } from "@/lib/client/nav";
 import { officeSummary, useOfficeApplications } from "@/lib/client/office";
 import { useIsStaff } from "@/lib/client/session";
 import { onSyncState } from "@/lib/client/sync";
@@ -43,13 +44,7 @@ export function AppBar({
       {/* Wraps onto two lines when the text size is large, instead of pushing controls off screen. */}
       <div className="mx-auto flex min-h-[4.25rem] max-w-6xl flex-wrap items-center gap-x-2.5 gap-y-1 px-3 py-1.5 sm:px-4">
         {back ? (
-          <Link
-            href={back}
-            aria-label={t("back")}
-            className="grid h-12 w-12 place-items-center rounded-full text-ink hover:bg-paper"
-          >
-            <Icon name="back" size={26} />
-          </Link>
+          <BackLink fallback={back} />
         ) : publicPage ? (
           <Avatar />
         ) : (
@@ -83,6 +78,31 @@ export function AppBar({
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Back arrow: returns to the screen you came from (Queue, Applications, Home…)
+ * when there is one in this tab; otherwise, e.g. opened from a link or a fresh
+ * launch, goes to `fallback`, the screen's parent.
+ */
+function BackLink({ fallback }: { fallback: string }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  return (
+    <Link
+      href={fallback}
+      aria-label={t("back")}
+      title={t("back")}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0 || !canGoBackInApp()) return;
+        e.preventDefault();
+        router.back();
+      }}
+      className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
+    >
+      <Icon name="back" size={26} />
+    </Link>
   );
 }
 

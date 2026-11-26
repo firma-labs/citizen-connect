@@ -2,14 +2,14 @@
  * - App shell (intake pages + their JS/CSS) cached so capture works with no signal.
  * - /_next/static: cache-first in production (content-hashed). In dev, network-first
  *   for everything so code changes show up immediately.
- * - /vendor/*: cache-first (versioned file names), so page clean-up works offline.
+ * - /vendor/*: cache-first (versioned file names), so page detection and clean-up work offline.
  * - /api/*: never cached — capture data lives in IndexedDB and is synced by the app.
  */
 const DEV = new URL(self.location.href).searchParams.get("dev") === "1";
 const VERSION = "cc-v2";
 const SHELL = `${VERSION}-shell`;
 const STATIC = `${VERSION}-static`;
-const SHELL_ROUTES = ["/", "/capture", "/queue", "/applications", "/dashboard", "/verify", "/track", "/settings", "/offline", "/login", "/privacy", "/terms", "/accessibility"];
+const SHELL_ROUTES = ["/", "/welcome", "/capture", "/queue", "/applications", "/dashboard", "/verify", "/track", "/settings", "/offline", "/login", "/privacy", "/terms", "/accessibility"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -76,7 +76,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(networkFirst(request, SHELL, "/offline"));
     return;
   }
-  // Versioned vendor files (OpenCV.js for page clean-up): fetched once, then offline.
+  // Versioned vendor files (OpenCV.js, the page-corner model): fetched once, then offline.
   if (url.pathname.startsWith("/vendor/") || url.pathname.startsWith("/samples/")) {
     event.respondWith(cacheFirst(request, STATIC));
     return;

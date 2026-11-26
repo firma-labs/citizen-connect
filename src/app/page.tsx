@@ -73,7 +73,7 @@ export default function Home() {
         </Button>
         <p className="mt-2 text-center text-[0.92rem] text-ink-3">{t("home.scan.hint")}</p>
 
-        <ul className="mt-6 divide-y divide-surface overflow-hidden card">
+        <ul className="mt-6 divide-y divide-surface overflow-hidden card-elevated">
           <Row href="/queue" icon="list" label="home.queue" count={office.toCheck} chip="bg-sky-50 text-sky-700" />
           <Row href="/applications" icon="folder" label="home.applications" chip="bg-mint-50 text-mint-700" />
           <Row href="/dashboard" icon="chart" label="home.dashboard" chip="bg-marigold-50 text-marigold-700" />
@@ -89,7 +89,7 @@ function Row({ href, icon, label, count, chip }: { href: string; icon: IconName;
   const { t } = useI18n();
   return (
     <li>
-      <Link href={href} className="flex min-h-16 items-center gap-3 px-4 transition-colors hover:bg-ink/5">
+      <Link href={href} className="flex min-h-16 items-center gap-3 px-4 transition-colors hover:bg-ink/5 active:bg-ink/10">
         <span className={`grid h-10 w-10 place-items-center rounded-full ${chip}`}>
           <Icon name={icon} size={20} />
         </span>

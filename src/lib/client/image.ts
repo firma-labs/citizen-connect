@@ -21,6 +21,31 @@ const ORIGINAL_EDGE = 3000;
 const QUALITY = 0.85;
 /** Served from public/vendor (copied from @techstark/opencv-js by scripts/copy-vendor.mjs). Keep the version in step with package.json. */
 const OPENCV_URL = "/vendor/opencv-4.12.0.js";
+/**
+ * scanic's neural page detector: its loader (from scanic) and the model with
+ * its runtime (from scanic-ml), served from public/vendor (copied by
+ * scripts/copy-vendor.mjs). Keep the versions in step with package.json.
+ */
+const SCANIC_ML_LOADER = "/vendor/scanic-1.8.0/scanic-mlDetector.js";
+const SCANIC_ML_URL = "/vendor/scanic-ml-0.2.0/";
+/** The model's P(this photo shows a page); below it, the classical detector is tried. */
+const ML_MIN_SCORE = 0.5;
+/** A page covers at least this share of the photo... */
+const PAGE_MIN_AREA = 0.2;
+/** ...and its short side is at least this share of its long side (A4 is 0.71, legal 0.61). */
+const PAGE_MIN_ASPECT = 0.5;
+/** Share of each side trimmed off the straightened page, so no sliver of table shows at the edges. */
+const EDGE_TRIM = 0.006;
+/** Edge refinement works on a copy with this long edge. */
+const REFINE_EDGE = 1400;
+/** How far (share of the long edge) refinement looks either side of a rough side. */
+const REFINE_REACH = 0.04;
+const REFINE_SAMPLES = 48;
+/** The brightness step is measured between these distances (px) either side of a point. */
+const STEP_NEAR = 2;
+const STEP_FAR = 6;
+/** Smallest brightness step (0-255) that counts as the paper's edge. */
+const REFINE_MIN_STEP = 18;
 
 export type Corners = CornerPoints;
 export type Rotation = 0 | 90 | 180 | 270;
@@ -50,6 +75,20 @@ export interface ProcessedPage {
 
 let scanicP: Promise<typeof import("scanic")> | null = null;
 const loadScanic = () => (scanicP ??= import("scanic"));
+/** scanic's neural page detector (its dist file, served from public/vendor). */
+interface MlDetector {
+  detectDocumentMl(
+    image: HTMLCanvasElement,
+    options: { assetBaseUrl: string; minScore: number },
+  ): Promise<{ success: boolean; corners: Corners | null; score: number | null }>;
+  initializeMl(options: { assetBaseUrl: string }): Promise<void>;
+}
+let mlP: Promise<MlDetector> | null = null;
+const loadMl = () =>
+  (mlP ??= (import(/* webpackIgnore: true */ /* turbopackIgnore: true */ SCANIC_ML_LOADER) as Promise<MlDetector>).catch((e) => {
+    mlP = null; // allow a retry later (e.g. once back online)
+    throw e;
+  }));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenCV.js ships no usable types
 type CV = any;
@@ -84,6 +123,9 @@ export function warmUpScanner() {
   const go = () => {
     loadScanic().catch(() => {});
     loadOpenCv().catch(() => {});
+    loadMl()
+      .then((m) => m.initializeMl({ assetBaseUrl: SCANIC_ML_URL }))
+      .catch(() => {});
   };
   if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 3000 });
   else setTimeout(go, 500);
@@ -126,16 +168,181 @@ export async function blobToImage(blob: Blob): Promise<HTMLImageElement> {
 }
 
 async function detectCorners(photo: HTMLCanvasElement): Promise<Corners | null> {
+  return (await detectPage(photo, { detector: "ml", refine: true })) ?? (await detectPage(photo, { detector: "classical", refine: true }));
+}
+
+/**
+ * Find the page's corners: a first estimate from scanic (its neural model, or
+ * its classical edge tracer), then, optionally, each side snapped to the
+ * paper's exact edge with OpenCV. Null when no page is found.
+ */
+export async function detectPage(
+  photo: HTMLCanvasElement,
+  opts: { detector: "ml" | "classical"; refine: boolean },
+): Promise<Corners | null> {
+  let rough: Corners | null = null;
   try {
-    const { scanDocument } = await loadScanic();
-    // 0.8: on test photos, real page edges scored 0.87–0.98, while a photo of a
-    // screen gave a wrong, slanted quad at 0.68. Below it the whole photo is kept
-    // (still cleaned) and the page is flagged "Check edges" for staff to drag.
-    const r = await scanDocument(photo, { mode: "detect", maxProcessingDimension: 1000, minDetectionConfidence: 0.8 });
-    return r.success && r.isValid !== false && r.corners ? r.corners : null;
+    if (opts.detector === "ml") {
+      const { detectDocumentMl } = await loadMl();
+      const r = await detectDocumentMl(photo, { assetBaseUrl: SCANIC_ML_URL, minScore: ML_MIN_SCORE });
+      rough = r.success && r.corners ? r.corners : null;
+    } else {
+      const { scanDocument } = await loadScanic();
+      // 0.8: on test photos, real page edges scored 0.87–0.98, while a photo of a
+      // screen gave a wrong, slanted quad at 0.68. Below it the whole photo is kept
+      // (still cleaned) and the page is flagged "Check edges" for staff to drag.
+      const r = await scanDocument(photo, { mode: "detect", maxProcessingDimension: 1000, minDetectionConfidence: 0.8 });
+      rough = r.success && r.isValid !== false && r.corners ? r.corners : null;
+    }
   } catch (e) {
-    console.warn("page edge detection failed", e);
+    console.warn(`page edge detection (${opts.detector}) failed`, e);
     return null;
+  }
+  if (!rough || !looksLikePage(rough, photo.width, photo.height)) return null;
+  if (!opts.refine) return rough;
+  const refined = await refineCorners(photo, rough);
+  if (refined === "rejected") return null;
+  if (!refined) return rough; // OpenCV unavailable (first use offline): the rough outline
+  return looksLikePage(refined, photo.width, photo.height) ? refined : null;
+}
+
+/**
+ * Whether four corners plausibly outline a letter: a convex shape covering a
+ * fair share of the photo, with a page's proportions even when seen at an
+ * angle. The model can be sure of a wrong shape (e.g. a band across a laptop
+ * screen showing a letter); those fall back to the next detector.
+ */
+function looksLikePage(c: Corners, W: number, H: number): boolean {
+  const p = [c.topLeft, c.topRight, c.bottomRight, c.bottomLeft];
+  const side = (i: number) => Math.hypot(p[(i + 1) % 4].x - p[i].x, p[(i + 1) % 4].y - p[i].y);
+  const [top, right, bottom, left] = [0, 1, 2, 3].map(side);
+  // Convex, corners in order: the turn at every corner has the same sign.
+  const turns = p.map((a, i) => {
+    const b = p[(i + 1) % 4];
+    const d = p[(i + 2) % 4];
+    return (b.x - a.x) * (d.y - b.y) - (b.y - a.y) * (d.x - b.x);
+  });
+  if (!turns.every((t) => t > 0) && !turns.every((t) => t < 0)) return false;
+  const area = Math.abs(p.reduce((s, a, i) => s + a.x * p[(i + 1) % 4].y - p[(i + 1) % 4].x * a.y, 0)) / 2;
+  if (area < PAGE_MIN_AREA * W * H) return false;
+  const w = (top + bottom) / 2;
+  const h = (left + right) / 2;
+  if (Math.min(w, h) / Math.max(w, h) < PAGE_MIN_ASPECT) return false;
+  // Opposite sides of similar length (a tilted phone shortens one, not by half).
+  return Math.min(top, bottom) / Math.max(top, bottom) > 0.6 && Math.min(left, right) / Math.max(left, right) > 0.6;
+}
+
+/**
+ * Snap each side of a rough page outline to the paper's real edge, as scanner
+ * apps do. Along each side, look a short way inwards and outwards for the
+ * biggest step in brightness from one side of the line to the other (paper
+ * against table - a ruled line or a text line on the paper is not a step),
+ * then fit a straight line through those points (OpenCV fitLine, robust to
+ * stray points such as a finger); the corners are where neighbouring lines
+ * meet. A side with no such edge along it is accepted only where it runs along
+ * the photo's border (the page fills the photo there).
+ *
+ * Returns the refined corners; "rejected" when some side has no edge to stand
+ * on (the rough outline is wrong); null when OpenCV is unavailable.
+ */
+async function refineCorners(photo: HTMLCanvasElement, rough: Corners): Promise<Corners | "rejected" | null> {
+  let cv: CV;
+  try {
+    ({ cv } = await loadOpenCv());
+  } catch {
+    return null;
+  }
+  const work = scaled(photo, photo.width, photo.height, REFINE_EDGE);
+  const k = work.width / photo.width;
+  const W = work.width;
+  const H = work.height;
+  const mats: { delete(): void }[] = [];
+  const keep = <T extends { delete(): void }>(m: T) => (mats.push(m), m);
+  try {
+    const rgba = keep(cv.imread(work));
+    const grayMat = keep(new cv.Mat());
+    cv.cvtColor(rgba, grayMat, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(grayMat, grayMat, new cv.Size(3, 3), 0);
+    const gray: Uint8Array = grayMat.data;
+    const at = (x: number, y: number) => gray[Math.min(H - 1, Math.max(0, Math.round(y))) * W + Math.min(W - 1, Math.max(0, Math.round(x)))];
+
+    const pts = [rough.topLeft, rough.topRight, rough.bottomRight, rough.bottomLeft].map((p) => ({ x: p.x * k, y: p.y * k }));
+    const reach = Math.max(W, H) * REFINE_REACH;
+    type Line = { x: number; y: number; vx: number; vy: number };
+    const BORDERS: Line[] = [
+      { x: 0, y: 0, vx: 1, vy: 0 },
+      { x: W, y: 0, vx: 0, vy: 1 },
+      { x: 0, y: H, vx: 1, vy: 0 },
+      { x: 0, y: 0, vx: 0, vy: 1 },
+    ];
+    const distTo = (l: Line, p: { x: number; y: number }) => Math.abs((p.x - l.x) * l.vy - (p.y - l.y) * l.vx);
+
+    // Sides in order: top, right, bottom, left.
+    const sides: (Line | null)[] = pts.map((a, i) => {
+      const b = pts[(i + 1) % 4];
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const ux = (b.x - a.x) / len;
+      const uy = (b.y - a.y) / len;
+      const nx = -uy;
+      const ny = ux;
+      const strong: number[] = [];
+      for (let s = 0; s < REFINE_SAMPLES; s++) {
+        const t = 0.06 + (0.88 * s) / (REFINE_SAMPLES - 1);
+        const px = a.x + (b.x - a.x) * t;
+        const py = a.y + (b.y - a.y) * t;
+        let best = 0;
+        let bestO = 0;
+        for (let o = -reach; o <= reach; o += 1) {
+          let inner = 0;
+          let outer = 0;
+          for (let d = STEP_NEAR; d <= STEP_FAR; d++) {
+            inner += at(px + nx * (o - d), py + ny * (o - d));
+            outer += at(px + nx * (o + d), py + ny * (o + d));
+          }
+          const step = Math.abs(outer - inner) / (STEP_FAR - STEP_NEAR + 1);
+          if (step > best) {
+            best = step;
+            bestO = o;
+          }
+        }
+        if (best >= REFINE_MIN_STEP) strong.push(px + nx * bestO, py + ny * bestO);
+      }
+      if (strong.length / 2 >= REFINE_SAMPLES * 0.4) {
+        const m = keep(cv.matFromArray(strong.length / 2, 1, cv.CV_32FC2, strong));
+        const fit = keep(new cv.Mat());
+        cv.fitLine(m, fit, cv.DIST_HUBER, 0, 0.01, 0.01);
+        const [vx, vy, x0, y0] = fit.data32F as Float32Array;
+        const line = { x: x0, y: y0, vx, vy };
+        // Same direction as the rough side (within ~5°), and close to it.
+        const parallel = Math.abs(ux * vy - uy * vx) <= Math.sin((5 * Math.PI) / 180);
+        if (parallel && distTo(line, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }) <= reach) return line;
+      }
+      // No paper edge along this side: fine only if the page runs off the photo here.
+      const border = BORDERS.find((l) => distTo(l, a) <= reach * 1.5 && distTo(l, b) <= reach * 1.5);
+      return border ?? null;
+    });
+    if (sides.some((l) => !l)) return "rejected";
+
+    const lines = sides as Line[];
+    const meet = (p: Line, q: Line) => {
+      const den = p.vx * q.vy - p.vy * q.vx;
+      if (Math.abs(den) < 1e-6) return null;
+      const t = ((q.x - p.x) * q.vy - (q.y - p.y) * q.vx) / den;
+      return { x: p.x + p.vx * t, y: p.y + p.vy * t };
+    };
+    // Corner i sits where side i-1 meets side i (top-left = left ∩ top, ...).
+    const out = [0, 1, 2, 3].map((i) => meet(lines[(i + 3) % 4], lines[i]));
+    if (out.some((p, i) => !p || Math.hypot(p.x - pts[i].x, p.y - pts[i].y) > reach * 2)) return "rejected";
+    const c = (out as { x: number; y: number }[]).map((p) => ({
+      x: Math.min(Math.max(p.x / k, 0), photo.width),
+      y: Math.min(Math.max(p.y / k, 0), photo.height),
+    }));
+    return { topLeft: c[0], topRight: c[1], bottomRight: c[2], bottomLeft: c[3] };
+  } catch (e) {
+    console.warn("edge refinement failed; keeping the rough corners", e);
+    return null;
+  } finally {
+    mats.forEach((m) => m.delete());
   }
 }
 
@@ -147,7 +354,7 @@ async function render(photo: HTMLCanvasElement, edits: PageEdits) {
       const { extractDocument } = await loadScanic();
       const r = await extractDocument(photo, edits.corners, { output: "canvas" });
       if (r.success && r.output instanceof HTMLCanvasElement) {
-        page = r.output;
+        page = trimmed(r.output, EDGE_TRIM);
         straightened = true;
       }
     } catch (e) {
@@ -215,6 +422,17 @@ function scaled(src: CanvasImageSource, w: number, h: number, maxEdge: number): 
   const ctx = c.getContext("2d") as CanvasRenderingContext2D;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+
+/** Cut `share` of the width/height off every side. */
+function trimmed(src: HTMLCanvasElement, share: number): HTMLCanvasElement {
+  const dx = Math.round(src.width * share);
+  const dy = Math.round(src.height * share);
+  const c = document.createElement("canvas");
+  c.width = src.width - 2 * dx;
+  c.height = src.height - 2 * dy;
+  (c.getContext("2d") as CanvasRenderingContext2D).drawImage(src, dx, dy, c.width, c.height, 0, 0, c.width, c.height);
   return c;
 }
 

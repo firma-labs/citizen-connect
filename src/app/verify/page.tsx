@@ -20,6 +20,8 @@ import { useI18n, type MessageKey } from "@/lib/i18n";
 import { CATEGORIES, DEPARTMENTS, LANGUAGES, PAGE_TYPES, PRIORITIES, dept, refLabel } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
 import { isRouted, type Application, type Confidence, type VerifiedFields } from "@/lib/types";
+import { useLeaveGuard } from "@/lib/client/nav";
+import { LiveReading, ScanBand, livePage } from "@/components/LiveReading";
 
 export default function VerifyPage() {
   return (
@@ -134,6 +136,8 @@ function Verify() {
   const [onSpotRemark, setOnSpotRemark] = useState("");
   const [pollKey, setPollKey] = useState(0);
   const [seededFrom, setSeededFrom] = useState<string | null>(null); // read_at of the AI result in the form
+  // Staff changed something in the form that isn't saved yet: ask before leaving.
+  const [edited, setEdited] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -154,7 +158,8 @@ function Verify() {
     const tick = async () => {
       const a = await load();
       if (stop) return;
-      if (!a || a.status === "captured" || a.status === "reading") timer = setTimeout(tick, 3000);
+      // Every second while the AI reads (the live view follows it), else every 3 s until pages arrive.
+      if (!a || a.status === "captured" || a.status === "reading") timer = setTimeout(tick, a?.status === "reading" ? 1000 : 3000);
     };
     void tick();
     return () => {
@@ -170,6 +175,7 @@ function Verify() {
     setSeededFrom(readAt);
     setForm(fromExtraction(app));
     setConfirmed(false);
+    setEdited(false);
   }
 
   const attentionOf = useMemo(() => {
@@ -191,6 +197,9 @@ function Verify() {
     return (k: keyof VerifiedFields) => toAttention(map[k]);
   }, [app]);
 
+  // Before any early return (hooks run in the same order every render).
+  useLeaveGuard(edited && !!form && !!app && !isRouted(app.status) && !app.archived && !saving, t("verify.leave"));
+
   if (!token) {
     return (
       <>
@@ -202,7 +211,10 @@ function Verify() {
     );
   }
 
-  const set = <K extends keyof VerifiedFields>(k: K, v: VerifiedFields[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const set = <K extends keyof VerifiedFields>(k: K, v: VerifiedFields[K]) => {
+    setForm((f) => (f ? { ...f, [k]: v } : f));
+    setEdited(true);
+  };
 
   async function save() {
     if (!form || !confirmed) return;
@@ -223,6 +235,7 @@ function Verify() {
       if (res.status === 503) throw new Error(t("verify.busy"));
       if (!res.ok) throw new Error(body.error ?? t("verify.saveFailed", { status: res.status }));
       setApp(body.application);
+      setEdited(false);
       void syncNow();
       window.scrollTo({ top: 0 });
     } catch (e) {
@@ -243,6 +256,11 @@ function Verify() {
   const canRescan = !archived && (status === "read" || status === "read_failed" || status === "captured");
   const showForm = !archived && !rescanning && !!form && (status === "read" || (status === "read_failed" && manual));
   const done = !!status && isRouted(status);
+  // From the moment the pages are in until the AI has finished reading and extracting,
+  // the letter shows the scan band. While it transcribes, the page it is on is shown.
+  const scanning = !!app && !archived && !rescanning && (status === "reading" || (status === "captured" && pagesIn === app.page_count));
+  const readingPage = scanning && status === "reading" ? livePage(app!.reading_live, app!.page_count) : null;
+  const shownPage = Math.min(readingPage ?? viewing, Math.max(pageUrls.length - 1, 0));
   const pageType = (i: number) => {
     const code = app?.extraction?.reader.pages[i]?.page_type;
     return code ? refLabel(PAGE_TYPES.find((p) => p.code === code), locale) : null;
@@ -279,13 +297,26 @@ function Verify() {
           />
         )}
 
-        {loadError && !app && <Notice tone="error">{loadError === "not found" ? t("verify.notOnServer") : loadError}</Notice>}
+        {/* Not uploaded yet (e.g. opened right after issuing the token): a note, not an error; it keeps checking. */}
+        {loadError && !app && (
+          <Notice tone={loadError === "not found" ? "info" : "error"}>{loadError === "not found" ? t("verify.notOnServer") : loadError}</Notice>
+        )}
 
         <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-8">
           {/* Letter pages: a strip on phones, a large side-by-side viewer on wide screens */}
           {pageUrls.length > 0 && (
             <aside className="mb-5 lg:sticky lg:top-20 lg:mb-0">
               <h2 className="sr-only">{t("verify.pages")}</h2>
+              {/* Phones, while the AI reads: the page large, with the scan band (as in the intake mock). */}
+              {scanning && (
+                <div className="relative mb-3 overflow-hidden rounded-[var(--radius-panel)] bg-[#3a342e] lg:hidden">
+                  <PageImage src={pageUrls[shownPage]} className="mx-auto max-h-[58vh] w-full object-contain" />
+                  <ScanBand />
+                  <span className="absolute right-3 top-3 rounded-full bg-ink/70 px-3 py-1 text-[0.8rem] font-semibold text-white">
+                    {t("verify.live.pageOf", { n: shownPage + 1, total: pageUrls.length })}
+                  </span>
+                </div>
+              )}
               <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 lg:hidden">
                 {pageUrls.map((u, i) => (
                   <button
@@ -295,6 +326,7 @@ function Verify() {
                     className="relative w-36 shrink-0 snap-start overflow-hidden rounded-[var(--radius-control)] border border-rule bg-surface"
                   >
                     <PageImage src={u} className="aspect-[3/4] w-full object-cover" lazy />
+                    {scanning && shownPage === i && <ScanBand />}
                     <span className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-2 text-[0.85rem] font-bold text-white">{i + 1}</span>
                     {pageType(i) && <span className="absolute inset-x-0 bottom-0 bg-ink/75 px-2 py-0.5 text-[0.8rem] text-white">{pageType(i)}</span>}
                   </button>
@@ -302,11 +334,12 @@ function Verify() {
               </div>
               <div className="hidden lg:block">
                 <button
-                  onClick={() => setZoom(viewing)}
-                  aria-label={t("verify.openPage", { n: viewing + 1 })}
-                  className="block w-full overflow-hidden card"
+                  onClick={() => setZoom(shownPage)}
+                  aria-label={t("verify.openPage", { n: shownPage + 1 })}
+                  className="relative block w-full overflow-hidden card"
                 >
-                  <PageImage src={pageUrls[Math.min(viewing, pageUrls.length - 1)]} className="max-h-[calc(100vh-11rem)] min-h-64 w-full object-contain" />
+                  <PageImage src={pageUrls[Math.min(shownPage, pageUrls.length - 1)]} className="max-h-[calc(100vh-11rem)] min-h-64 w-full object-contain" />
+                  {scanning && <ScanBand />}
                 </button>
                 {pageUrls.length > 1 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -314,8 +347,8 @@ function Verify() {
                       <button
                         key={u}
                         onClick={() => setViewing(i)}
-                        aria-current={viewing === i}
-                        className={`h-11 min-w-11 rounded-[var(--radius-control)] px-3 font-semibold ${viewing === i ? "bg-primary-container text-on-primary-container" : "border border-line text-ink-2 hover:bg-primary/8"}`}
+                        aria-current={shownPage === i}
+                        className={`h-11 min-w-11 rounded-[var(--radius-control)] px-3 font-semibold ${shownPage === i ? "bg-primary-container text-on-primary-container" : "border border-line text-ink-2 hover:bg-primary/8"}`}
                       >
                         {i + 1}
                         {pageType(i) ? <span className="ml-1.5 font-normal opacity-80">{pageType(i)}</span> : null}
@@ -341,6 +374,7 @@ function Verify() {
                 onDone={() => {
                   setRescanning(false);
                   setForm(null);
+                  setEdited(false);
                   setManual(false);
                   setConfirmed(false);
                   setPollKey((k) => k + 1);
@@ -349,19 +383,7 @@ function Verify() {
               />
             )}
 
-            {!archived && !rescanning && (status === "captured" || status === "reading") && (
-              <div className="flex items-start gap-4 rounded-[var(--radius-panel)] bg-sky-50 p-5" role="status">
-                <span className="mt-1 h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-sky-100 border-t-sky-500" aria-hidden />
-                <div>
-                  <p className="font-bold">{t("verify.reading.title")}</p>
-                  <p className="text-ink-2">
-                    {app && app.pages_received.length < app.page_count
-                      ? t("verify.reading.wait", { a: app.pages_received.length, b: app.page_count })
-                      : t("verify.reading.body")}
-                  </p>
-                </div>
-              </div>
-            )}
+            {!archived && !rescanning && app && (status === "captured" || status === "reading") && <LiveReading app={app} />}
 
             {!archived && !rescanning && status === "read_failed" && !form && (
               <Notice
@@ -556,7 +578,10 @@ function Verify() {
 
                 <div className="card p-5">
                   <label className="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" checked={onSpot} onChange={(e) => setOnSpot(e.target.checked)} className="mt-0.5 h-6 w-6 shrink-0 accent-primary" />
+                    <input type="checkbox" checked={onSpot} onChange={(e) => {
+                        setOnSpot(e.target.checked);
+                        setEdited(true);
+                      }} className="mt-0.5 h-6 w-6 shrink-0 accent-primary" />
                     <span>
                       <span className="block font-semibold">{t("verify.onSpot.label")}</span>
                       <span className="block text-[0.9rem] text-ink-3">{t("verify.onSpot.hint")}</span>
@@ -567,7 +592,10 @@ function Verify() {
                       <label htmlFor="onspot-remark" className="block text-[0.92rem] font-semibold">
                         {t("verify.onSpot.remark")}
                       </label>
-                      <textarea id="onspot-remark" required value={onSpotRemark} onChange={(e) => setOnSpotRemark(e.target.value)} maxLength={1000} className={`${inputClass()} mt-1`} />
+                      <textarea id="onspot-remark" required value={onSpotRemark} onChange={(e) => {
+                          setOnSpotRemark(e.target.value);
+                          setEdited(true);
+                        }} maxLength={1000} className={`${inputClass()} mt-1`} />
                     </div>
                   )}
                 </div>
@@ -670,7 +698,7 @@ function Verify() {
   function renderSaved(app: Application) {
     const v = app.verified!;
     const d = dept(v.department);
-    const sms = app.sms.at(-1);
+    const msg = app.sms.at(-1);
     const resolved = app.status === "closed";
     const late = isOverdue(app);
     return (
@@ -712,16 +740,16 @@ function Verify() {
           <Timeline audit={app.audit} />
         </section>
 
-        {sms && (
+        {msg && (
           <section className="card p-5">
             <h2 className="font-bold">
-              {t("saved.sms.label")}
-              {sms.to ? <span className="ml-2 font-normal text-ink-3">+91 {sms.to}</span> : null}
+              {t(msg.channel === "whatsapp" ? "saved.message.whatsapp" : "saved.message.sms")}
+              {msg.to ? <span className="ml-2 font-normal text-ink-3">+91 {msg.to}</span> : null}
             </h2>
             <p className="text-[0.92rem] text-ink-3">
-              {sms.status === "logged" ? t("saved.sms.logged") : sms.status === "skipped" ? t("saved.sms.skipped") : sms.status === "failed" ? t("saved.sms.failed") : null}
+              {msg.status === "logged" ? t("saved.message.logged") : msg.status === "skipped" ? t("saved.message.skipped") : msg.status === "failed" ? t("saved.message.failed") : null}
             </p>
-            <p className="mt-2 rounded-[var(--radius-control)] bg-surface p-3">{sms.body}</p>
+            <p className="mt-2 whitespace-pre-line rounded-[var(--radius-control)] bg-surface p-3">{msg.body}</p>
           </section>
         )}
 

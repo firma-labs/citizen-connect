@@ -20,7 +20,7 @@ export default function TrackPage() {
   const staff = useIsStaff();
   return (
     <>
-      <AppBar publicPage />
+      <AppBar publicPage back={staff ? "/" : "/welcome"} />
       <Screen>
         <Suspense>
           <Track />
@@ -35,6 +35,8 @@ interface Result {
   token: string;
   stage: "received" | "routed" | "acknowledged" | "in_progress" | "closed";
   received_at: string;
+  /** When each stage was reached (null: not reached, or skipped - e.g. work began without an acknowledgement). */
+  dates?: Partial<Record<Result["stage"], string | null>>;
   department: { code: string } | null;
   sla_due_at: string | null;
   closing_remark: string | null;
@@ -139,6 +141,11 @@ function Track() {
                   <div className="pt-1">
                     <p className={reached ? "font-bold" : "text-ink-3"}>{t(s.label)}</p>
                     {s.key === "routed" && reached && result.department && <p className="text-ink-2">{refLabel(dept(result.department.code), locale)}</p>}
+                    {reached && result.dates?.[s.key] && (
+                      <p className="text-[0.9rem] text-ink-3">
+                        <time dateTime={result.dates[s.key]!}>{date(result.dates[s.key]!, { day: "numeric", month: "short", year: "numeric" })}</time>
+                      </p>
+                    )}
                   </div>
                 </li>
               );

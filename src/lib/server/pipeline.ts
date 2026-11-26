@@ -1,11 +1,11 @@
 import "server-only";
 import { dept } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
-import { isOpenCase, isRouted, type Application, type ArchiveReason, type AuditEntry, type VerifiedFields } from "@/lib/types";
+import { isOpenCase, isRouted, type Application, type ArchiveReason, type AuditEntry, type CitizenMessage, type ReadingLive, type VerifiedFields } from "@/lib/types";
 import type { DepartmentCode } from "@/lib/reference";
 import { AIError, getReader, getReasoner, type PageImage } from "./ai";
 import { AI_LIMIT_PER_USER, AI_LIMIT_TOTAL, ANONYMOUS, takeAiRead } from "./quota";
-import { getSmsSender, tokenSms } from "./sms";
+import { getMessageSender, tokenMessage } from "./whatsapp";
 import { getStore } from "./store";
 
 const READ_STALE_MS = 3 * 60_000;
@@ -30,9 +30,60 @@ export async function claimRead(token: string, force = false): Promise<boolean> 
     a.read_started_at = new Date().toISOString();
     a.read_error = null;
     a.read_error_code = null;
+    a.reading_live = null;
     return a;
   });
   return claimed;
+}
+
+const LIVE_EVERY_MS = 1200;
+
+/**
+ * Saves what the AI has read so far onto the application while it reads (for
+ * Check details' live view), at most every LIVE_EVERY_MS - the latest
+ * snapshot wins. `stop()` cancels any pending save and waits for one in flight,
+ * so nothing lands after the final result.
+ */
+function liveSaver(token: string, version: number) {
+  const store = getStore();
+  let live: ReadingLive = { stage: "reader", at: "", reader: null, reasoner: null };
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let last = 0;
+  let stopped = false;
+  let inFlight: Promise<unknown> = Promise.resolve();
+  const save = () => {
+    timer = null;
+    if (stopped) return;
+    last = Date.now();
+    const snapshot: ReadingLive = { ...live, at: new Date().toISOString() };
+    inFlight = inFlight
+      .then(() =>
+        store.update(token, (a) => {
+          if (stopped || a.status !== "reading" || (a.pages_version ?? 0) !== version) return null;
+          a.reading_live = snapshot;
+          return a;
+        }),
+      )
+      .catch((e) => console.warn(`[read] ${token}: live progress not saved:`, (e as Error).message));
+  };
+  const schedule = () => {
+    if (!timer && !stopped) timer = setTimeout(save, Math.max(0, LIVE_EVERY_MS - (Date.now() - last)));
+  };
+  return {
+    reader(partial: unknown) {
+      live = { ...live, stage: "reader", reader: partial as ReadingLive["reader"] };
+      schedule();
+    },
+    reasoner(partial: unknown) {
+      live = { ...live, stage: "reasoner", reasoner: partial as ReadingLive["reasoner"] };
+      schedule();
+    },
+    async stop() {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      await inFlight;
+    },
+  };
 }
 
 /**
@@ -42,6 +93,7 @@ export async function claimRead(token: string, force = false): Promise<boolean> 
 export async function runRead(token: string, user: string = ANONYMOUS): Promise<void> {
   const store = getStore();
   let version = -1;
+  let live: ReturnType<typeof liveSaver> | null = null;
   try {
     const app = await store.get(token);
     if (!app) throw new Error("application not found");
@@ -74,8 +126,9 @@ export async function runRead(token: string, user: string = ANONYMOUS): Promise<
       return;
     }
 
+    live = liveSaver(token, version);
     const t0 = Date.now();
-    const read = await reader.read(pages);
+    const read = await reader.read(pages, live.reader);
     const t1 = Date.now();
 
     // Devanagari digits → ASCII in the mobile field only (PRD §7.5). A number that
@@ -90,14 +143,17 @@ export async function runRead(token: string, user: string = ANONYMOUS): Promise<
       if (mobile && !isValidMobile(mobile)) read.confidence.mobile = "low";
     }
 
-    const reasoned = await reasoner.reason(read);
+    live.reader(read); // the Reader's complete result, then the Reasoner's progress
+    const reasoned = await reasoner.reason(read, live.reasoner);
     const t2 = Date.now();
+    await live.stop();
 
     await store.update(token, (a) => {
       if ((a.pages_version ?? 0) !== version) return null; // pages were rescanned meanwhile — discard this read
       a.status = "read";
       a.read_error = null;
       a.read_error_code = null;
+      a.reading_live = null;
       a.extraction = {
         reader: read,
         reasoner: reasoned,
@@ -111,9 +167,11 @@ export async function runRead(token: string, user: string = ANONYMOUS): Promise<
   } catch (e) {
     const message = e instanceof AIError ? e.message : `AI reading failed: ${(e as Error).message}`;
     console.error(`[read] ${token}:`, e);
+    await live?.stop();
     await store.update(token, (a) => {
       if (a.status !== "reading" || (version >= 0 && (a.pages_version ?? 0) !== version)) return null; // rescanned meanwhile
       a.status = "read_failed";
+      a.reading_live = null;
       a.read_error = message;
       a.read_error_code = null;
       a.audit.push({ at: new Date().toISOString(), by: "system", action: "ai_read_failed", to: message });
@@ -174,7 +232,7 @@ const FIELD_SOURCES: Record<keyof VerifiedFields, (a: Application) => unknown> =
 /**
  * Human confirmation (PRD §4.1 #4): nothing is saved as the application's
  * record until staff confirm. Logs every edit against the AI value, routes to
- * the department with its SLA clock, and sends the token SMS.
+ * the department with its SLA clock, and sends the token on WhatsApp.
  */
 export async function verifyApplication(
   token: string,
@@ -226,24 +284,24 @@ export async function verifyApplication(
   });
   if (!updated) throw new VerifyError("Application not found");
 
-  // SMS after the record is safely saved.
-  const sender = getSmsSender();
+  // WhatsApp message after the record is safely saved.
+  const sender = getMessageSender();
   const trackUrl = `${origin}/track?t=${encodeURIComponent(token)}`;
-  const body = tokenSms(fields.language, token, trackUrl);
-  let sms;
+  const body = tokenMessage(fields.language, token, trackUrl);
+  const base = { channel: "whatsapp" as const, to: fields.mobile ?? "", language: fields.language, body, provider: sender.name };
+  let msg: CitizenMessage;
   if (!isValidMobile(fields.mobile)) {
-    sms = { to: fields.mobile ?? "", language: fields.language, body, provider: sender.name, status: "skipped" as const, detail: "No valid mobile number", at: new Date().toISOString() };
+    msg = { ...base, status: "skipped", detail: "No valid mobile number", at: new Date().toISOString() };
   } else {
     try {
-      const r = await sender.send(fields.mobile!, body);
-      sms = { to: fields.mobile!, language: fields.language, body, provider: sender.name, ...r, at: new Date().toISOString() };
+      msg = { ...base, ...(await sender.send(fields.mobile!, body)), at: new Date().toISOString() };
     } catch (e) {
-      sms = { to: fields.mobile!, language: fields.language, body, provider: sender.name, status: "failed" as const, detail: (e as Error).message, at: new Date().toISOString() };
+      msg = { ...base, status: "failed", detail: (e as Error).message, at: new Date().toISOString() };
     }
   }
   return store.update(token, (a) => {
-    a.sms.push(sms);
-    a.audit.push({ at: sms.at, by: "system", action: `sms_${sms.status}`, to: sms.to });
+    a.sms.push(msg);
+    a.audit.push({ at: msg.at, by: "system", action: `whatsapp_${msg.status}`, to: msg.to });
     return a;
   });
 }

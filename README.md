@@ -1,7 +1,7 @@
 # Citizen Connect — Janata Darbar intake (pilot)
 
 Next.js PWA for the pilot scope in `.claude/plans/PRD-janata-darbar-citizen-connect.md`:
-scan pages in the phone browser → token + QR instantly → AI reads → staff verify → route + SMS → citizen tracks.
+scan pages in the phone browser → token + QR instantly → AI reads → staff verify → route + WhatsApp message → citizen tracks.
 
 **Pilot rule:** mock or redacted letters only (PRD §9.1).
 
@@ -26,13 +26,13 @@ The pilot calls the **Claude API directly** with `ANTHROPIC_API_KEY`, using Clau
 explicitly via `AI_READER` / `AI_REASONER`.
 
 Override per step with `AI_READER` / `AI_REASONER` (`mock`, `anthropic:<model>`, `bedrock:<model>`) for the
-PRD §7.3 comparison runs. Data: JSON files in `.data/` on your machine; Vercel Blob when deployed on Vercel. SMS is logged only
-(`SMS_PROVIDER=console`) until the TRAI DLT templates are approved.
+PRD §7.3 comparison runs. Data: JSON files in `.data/` on your machine; Vercel Blob when deployed on Vercel. The WhatsApp message is
+logged only (`WHATSAPP_PROVIDER=console`) until the WhatsApp Business number and message template are approved.
 
 ## Deploy to Vercel
 
 The repo deploys as-is: Next.js is detected, `vercel.json` runs the functions in Mumbai (`bom1`), and the
-build copies OpenCV.js into `public/vendor/` and checks the translations (`prebuild`). Data on Vercel lives in
+build copies OpenCV.js and the page-corner model into `public/vendor/` and checks the translations (`prebuild`). Data on Vercel lives in
 a private **Vercel Blob** store — the same JSON-per-application layout as `.data/` locally. Your machine
 always keeps using `.data/`.
 
@@ -52,7 +52,7 @@ always keeps using `.data/`.
    | `ANTHROPIC_MODEL` | no | Default `claude-opus-5`. |
    | `AI_DAILY_LIMIT_PER_USER`, `AI_DAILY_LIMIT_TOTAL` | no | Defaults 20 and 200 readings a day. |
    | `PILOT_ALLOW_DELETE=1` | no | Lets staff permanently delete archived test scans. Leave off in production. |
-   | `PUBLIC_BASE_URL` | no | Only if SMS/QR links must use a custom domain instead of the request's host. |
+   | `PUBLIC_BASE_URL` | no | Only if WhatsApp/QR links must use a custom domain instead of the request's host. |
 
 4. **Deploy**: push to `main` (Production) or any other branch (Preview), or run `vercel deploy`.
 5. **Check**: open `/api/health` after signing in — it should show `"store": "vercel blob"` and
@@ -71,7 +71,7 @@ Notes:
 
 ## Layout
 
-- `src/app/capture` — camera capture (phone camera app via file input), page straightening ([scanic](https://www.npmjs.com/package/scanic)) and shadow removal ([OpenCV.js](https://www.npmjs.com/package/@techstark/opencv-js), served from `public/vendor`, copied on `npm install`), token + QR
+- `src/app/capture` — camera capture (phone camera app via file input), page detection and straightening ([scanic](https://www.npmjs.com/package/scanic) with its neural corner model [scanic-ml](https://www.npmjs.com/package/scanic-ml), edges snapped with OpenCV) and shadow removal ([OpenCV.js](https://www.npmjs.com/package/@techstark/opencv-js), served from `public/vendor`, copied on `npm install`), token + QR
 - `src/app/queue`, `src/app/verify` — sync status, AI result review with low-confidence highlights, save & route
 - `src/app/verify` (saved view) — the record: department follow-up (acknowledged, in progress, reminder, send to another department, resolved / reopen) and the timeline
 - `src/app/applications` — all routed applications: search and filter by department, status (open / overdue / resolved) and Darbar session

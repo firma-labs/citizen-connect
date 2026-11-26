@@ -200,6 +200,8 @@ function Item({
   const { t, date, locale } = useI18n();
   const [retrying, setRetrying] = useState(false);
   const needsCheck = status === "read" || status === "read_failed";
+  // On the server and being read (or its pages still arriving): open Check details to watch it.
+  const beingRead = status === "reading" || status === "captured";
   const verifyHref = `/verify?t=${encodeURIComponent(token)}`;
   const meta = [
     date(when, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }),
@@ -218,8 +220,13 @@ function Item({
       </div>
       <p className="mt-1 text-[0.9rem] text-ink-3">{meta.join(" · ")}</p>
       {detail && <p className={`mt-2 line-clamp-2 text-[0.95rem] ${status === "read_failed" ? "text-red-700" : "text-ink-2"}`}>{detail}</p>}
-      {(needsCheck || isRouted(status) || onArchive || onDeleteLocal) && (
+      {(needsCheck || beingRead || isRouted(status) || onArchive || onDeleteLocal) && (
         <div className="mt-3 flex flex-wrap gap-2">
+          {beingRead && (
+            <Button variant="secondary" href={verifyHref} className="flex-1">
+              {t("queue.watch")}
+            </Button>
+          )}
           {needsCheck && (
             <Button href={verifyHref} className="flex-1">
               {t("queue.check")}

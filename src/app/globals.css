@@ -88,6 +88,7 @@
 
   /* Material 3 elevation (used sparingly: dialogs, hovered buttons) */
   --elevation-1: 0 1px 2px rgb(28 31 51 / 0.18), 0 1px 3px 1px rgb(28 31 51 / 0.09);
+  --elevation-2: 0 1px 2px rgb(28 31 51 / 0.2), 0 2px 6px 2px rgb(28 31 51 / 0.1);
   --elevation-3: 0 4px 8px 3px rgb(28 31 51 / 0.1), 0 1px 3px rgb(28 31 51 / 0.2);
 }
 
@@ -95,6 +96,34 @@
 @utility card {
   background: var(--color-surface-container);
   border-radius: var(--radius-panel);
+}
+
+/* Depth only says "this opens something" (Material 3 elevated card). Cards
+   that just show information stay flat (.card).
+   .card-elevated: a lighter surface with a resting shadow, for a card or a
+   list whose rows are links. .raised: on the tappable element itself, lifts on
+   hover and darkens slightly when pressed (a state layer, so it works on any
+   card colour). */
+@utility card-elevated {
+  background-color: var(--color-surface-container-low);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--elevation-1);
+}
+@utility raised {
+  box-shadow: var(--elevation-1);
+  transition:
+    box-shadow 150ms ease,
+    background-image 150ms ease;
+  @media (hover: hover) {
+    &:hover {
+      box-shadow: var(--elevation-2);
+      background-image: linear-gradient(rgb(28 31 51 / 0.04), rgb(28 31 51 / 0.04));
+    }
+  }
+  &:active {
+    box-shadow: var(--elevation-1);
+    background-image: linear-gradient(rgb(28 31 51 / 0.09), rgb(28 31 51 / 0.09));
+  }
 }
 
 /* Text size: relative to the browser's own setting (so the phone's larger-text
@@ -165,6 +194,78 @@ textarea {
   font-weight: 700;
   letter-spacing: 0.05em;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- Live AI reading (Check details) --------------------------------------- */
+/* A sky-blue band sweeping down the letter while the AI reads it (as in the
+   intake mock): a bright line with a soft glow, over the whole photo. */
+.scan-band {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0 44%, rgb(185 220 250 / 0.35) 48%, rgb(120 190 245 / 0.85) 50%, rgb(185 220 250 / 0.35) 52%, transparent 56%);
+  background-size: 100% 220%;
+  animation: scan-sweep 1.6s linear infinite;
+}
+@keyframes scan-sweep {
+  from {
+    background-position: 0 100%;
+  }
+  to {
+    background-position: 0 -120%;
+  }
+}
+/* Placeholder for a detail not read yet. */
+.live-shimmer {
+  background: linear-gradient(90deg, var(--color-surface-container-high) 25%, var(--color-surface) 50%, var(--color-surface-container-high) 75%);
+  background-size: 200% 100%;
+  animation: live-shimmer 1.4s linear infinite;
+}
+@keyframes live-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+/* A detail arriving. */
+.live-in {
+  animation: live-in 400ms ease-out both;
+}
+@keyframes live-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+/* The cursor at the end of the text being read. */
+.live-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--color-primary);
+  animation: live-caret 1s steps(1) infinite;
+}
+@keyframes live-caret {
+  50% {
+    opacity: 0;
+  }
+}
+.ai-spark {
+  animation: ai-spark 1.6s ease-in-out infinite;
+}
+@keyframes ai-spark {
+  50% {
+    box-shadow: 0 0 0 6px rgb(74 43 194 / 0.15);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-band {
+    animation: none;
+    background: rgb(185 220 250 / 0.22);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

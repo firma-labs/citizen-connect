@@ -118,7 +118,7 @@ async function writeIfUnchanged(path: string, cur: Versioned<unknown>, data: unk
 // What this instance last wrote to each JSON file, with the ETag the store gave
 // it. On Vercel a read made right after an overwrite can still return the
 // previous version, whose ETag then fails every conditional write. Verifying
-// saves twice in a row (the record, then the SMS log), so it hit exactly that.
+// saves twice in a row (the record, then the WhatsApp message log), so it hit exactly that.
 // Updates first try from this copy: if nobody else has written since, its ETag
 // matches and the write goes through; if someone has, the write is refused
 // (ifMatch) and the next attempt reads the store instead.

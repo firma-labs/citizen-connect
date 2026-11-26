@@ -42,7 +42,7 @@ export function parseToken(raw: string): string | null {
   return TOKEN_RE.test(t) ? t : null;
 }
 
-/** Public base URL for links in SMS/QR. Behind `tailscale serve` the Host header is preserved. */
+/** Public base URL for links in WhatsApp messages and QR codes. Behind `tailscale serve` the Host header is preserved. */
 export function publicOrigin(req: Request): string {
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, "");
   const h = req.headers;

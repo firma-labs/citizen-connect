@@ -14,7 +14,7 @@ import { useI18n } from "@/lib/i18n";
 export default function LoginPage() {
   return (
     <>
-      <AppBar publicPage />
+      <AppBar publicPage back="/welcome" />
       <Screen>
         <Suspense>
           <Login />

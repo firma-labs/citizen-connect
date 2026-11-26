@@ -1,9 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, authMode, readSession } from "@/lib/server/auth";
 
-// Staff sign-in gate for the pilot. The citizen status page stays public: it
-// shows nothing without a token and the matching mobile number.
-const PUBLIC = [/^\/login$/, /^\/api\/auth\//, /^\/track$/, /^\/api\/track$/, /^\/offline$/, /^\/privacy$/, /^\/terms$/, /^\/accessibility$/];
+// Staff sign-in gate for the pilot. Public: the landing page (with its totals),
+// the citizen status page (it shows nothing without a token and the matching
+// mobile number), sign-in, and the legal pages.
+const PUBLIC = [
+  /^\/welcome$/,
+  /^\/api\/public\//,
+  /^\/login$/,
+  /^\/api\/auth\//,
+  /^\/track$/,
+  /^\/api\/track$/,
+  /^\/offline$/,
+  /^\/privacy$/,
+  /^\/terms$/,
+  /^\/accessibility$/,
+];
 
 export function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -19,6 +31,13 @@ export function proxy(req: NextRequest) {
     return NextResponse.json({ error: mode === "misconfigured" ? "sign-in not configured" : "sign in required" }, { status: 401 });
   }
   const url = req.nextUrl.clone();
+  // Opening the app signed out shows the public landing page (staff sign in from
+  // there). A link to a particular screen goes straight to sign-in and back.
+  if (pathname === "/") {
+    url.pathname = "/welcome";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
   url.pathname = "/login";
   url.search = `?next=${encodeURIComponent(pathname + search)}`;
   return NextResponse.redirect(url);

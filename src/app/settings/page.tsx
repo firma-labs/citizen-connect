@@ -27,7 +27,7 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("account");
   const [staff, setStaff] = useState("");
   const [savedName, setSavedName] = useState(false);
-  const [health, setHealth] = useState<{ store: string; reader: string; reasoner: string; sms: string; ai_today?: { user: number; userLimit: number; total: number; totalLimit: number } } | null | undefined>(undefined);
+  const [health, setHealth] = useState<{ store: string; reader: string; reasoner: string; whatsapp: string; ai_today?: { user: number; userLimit: number; total: number; totalLimit: number } } | null | undefined>(undefined);
   const [me, setMe] = useState<{ mode: string; signedIn: boolean; mobile: string | null; name: string | null } | null>(null);
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <AppBar />
+      <AppBar title="nav.settings" back="/" />
       <Screen>
         <h1 className="mb-4 text-[1.7rem] font-bold tracking-tight">{t("settings.title")}</h1>
 
@@ -182,7 +182,7 @@ export default function SettingsPage() {
                     ["settings.store", health?.store],
                     ["settings.reader", health?.reader],
                     ["settings.reasoner", health?.reasoner],
-                    ["settings.sms", health?.sms],
+                    ["settings.whatsapp", health?.whatsapp],
                     ["settings.aiToday", health?.ai_today ? `${health.ai_today.user} / ${health.ai_today.userLimit}` : undefined],
                     [
                       "settings.aiTotal",

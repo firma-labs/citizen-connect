@@ -8,9 +8,7 @@ import { useSettings } from "@/lib/client/settings";
 import { useHtmlLang, useI18n } from "@/lib/i18n";
 import { Button } from "./ui/Button";
 import { Notice } from "./ui/Notice";
-
-// Pages anyone may see without signing in (the proxy allows the same ones).
-const PUBLIC_PATHS = ["/login", "/track", "/offline", "/privacy", "/terms", "/accessibility"];
+import { isPublicPath, noteScreen } from "@/lib/client/nav";
 
 /**
  * Sends a screen that is already open to sign-in once the server says this
@@ -24,7 +22,7 @@ const PUBLIC_PATHS = ["/login", "/track", "/offline", "/privacy", "/terms", "/ac
 function useSessionGuard() {
   const pathname = usePathname();
   useEffect(() => {
-    if (PUBLIC_PATHS.includes(pathname)) return;
+    if (isPublicPath(pathname)) return;
     let stopped = false;
     const check = async () => {
       if (stopped || document.visibilityState !== "visible" || !navigator.onLine) return;
@@ -33,6 +31,8 @@ function useSessionGuard() {
         if (!res.ok) return;
         const me: { mode: string; signedIn: boolean } = await res.json();
         if (me.mode !== "open" && !me.signedIn && !stopped) {
+          // Same as the proxy: Home signed out shows the public landing page.
+          if (window.location.pathname === "/") return window.location.replace("/welcome");
           const next = encodeURIComponent(window.location.pathname + window.location.search);
           window.location.replace(`/login?next=${next}`);
         }
@@ -63,7 +63,14 @@ function useTextScale() {
   }, [settings.textScale]);
 }
 
+/** Records the screens this tab shows, for the app bar's back arrow (lib/client/nav). */
+function useScreenTrail() {
+  const pathname = usePathname();
+  useEffect(() => noteScreen(pathname), [pathname]);
+}
+
 export function AppRuntime() {
+  useScreenTrail();
   useHtmlLang();
   useTextScale();
   useSessionGuard();
