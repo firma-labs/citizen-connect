@@ -104,7 +104,7 @@
     "saved": "Saved on this phone. It uploads and is read in the background — check it from the queue.",
     "next": "Next citizen",
     "queue": "Go to queue",
-    "watch": "Watch the AI read it"
+    "watch": "View reading progress"
   },
   "queue": {
     "title": "Queue",
@@ -124,7 +124,7 @@
     "archived": "Archived",
     "deleteLocal": "Delete from this phone",
     "deleteLocalConfirm": "Delete this scan from this phone? It has not been uploaded, so it will be lost.",
-    "watch": "Watch the reading"
+    "watch": "View reading progress"
   },
   "verify": {
     "title": "Check details",
