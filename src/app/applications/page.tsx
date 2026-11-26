@@ -1,4 +1,5 @@
 "use client";
+import { CopyToken } from "@/components/ui/CopyToken";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -174,26 +175,34 @@ function CaseCard({ row: r }: { row: ServerRow }) {
     ) : r.sla_due_at ? (
       <span className="text-ink-2">{t("apps.due", { date: date(r.sla_due_at, { day: "numeric", month: "short" }) })}</span>
     ) : null;
+  // The card is one big link (the token's link stretched over it), with the
+  // copy button above it - a button can't sit inside a link.
   return (
-    <li>
-      <Link href={`/verify?t=${encodeURIComponent(r.token)}`} className="card-elevated raised flex h-full flex-col p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="token text-[1.1rem]">{r.token}</span>
-          <StatusTag status={r.status} overdue={overdue} />
+    <li className="card-elevated raised relative flex h-full flex-col p-4 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-primary">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-0.5">
+          <Link
+            href={`/verify?t=${encodeURIComponent(r.token)}`}
+            className="token text-[1.1rem] outline-none after:absolute after:inset-0 after:rounded-[var(--radius-panel)]"
+          >
+            {r.token}
+          </Link>
+          <CopyToken token={r.token} />
         </div>
-        <p className="mt-1 text-[0.9rem] text-ink-3">
-          {[date(r.verified_at ?? r.captured_at, { day: "numeric", month: "short" }), refLabel(dept(v.department), locale)].filter(Boolean).join(" · ")}
-        </p>
-        <p className="mt-2 font-semibold">{name}</p>
-        {(v.subject || r.summary_en) && <p className="mt-0.5 line-clamp-2 text-[0.95rem] text-ink-2">{v.subject || r.summary_en}</p>}
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-rule pt-3 text-[0.9rem] [margin-top:max(0.75rem,auto)]">
-          <span className="min-w-0">{deadline}</span>
-          <span className="flex shrink-0 items-center gap-0.5 font-semibold text-primary">
-            {t("apps.openCase")}
-            <Icon name="next" size={18} />
-          </span>
-        </div>
-      </Link>
+        <StatusTag status={r.status} overdue={overdue} />
+      </div>
+      <p className="mt-1 text-[0.9rem] text-ink-3">
+        {[date(r.verified_at ?? r.captured_at, { day: "numeric", month: "short" }), refLabel(dept(v.department), locale)].filter(Boolean).join(" · ")}
+      </p>
+      <p className="mt-2 font-semibold">{name}</p>
+      {(v.subject || r.summary_en) && <p className="mt-0.5 line-clamp-2 text-[0.95rem] text-ink-2">{v.subject || r.summary_en}</p>}
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-rule pt-3 text-[0.9rem] [margin-top:max(0.75rem,auto)]">
+        <span className="min-w-0">{deadline}</span>
+        <span className="flex shrink-0 items-center gap-0.5 font-semibold text-primary">
+          {t("apps.openCase")}
+          <Icon name="next" size={18} />
+        </span>
+      </div>
     </li>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyToken } from "@/components/ui/CopyToken";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { useSettings } from "@/lib/client/settings";
@@ -54,7 +55,13 @@ export function TokenCard({ token, pages, issuedAt }: { token: string; pages?: n
 
         <p className="mt-3 text-[0.95rem] text-ink-2">{t("token.yourToken")}</p>
         {/* Sized to the slip's own width (container query), so the token never clips. */}
-        <p className="token mt-1 whitespace-nowrap text-[clamp(1.35rem,10.5cqi,2.6rem)] leading-none tracking-[0.02em] text-ink">{token}</p>
+        {/* The copy button hangs to the right, so the token stays centred on the slip. */}
+        <div className="relative mx-auto mt-1 w-fit">
+          <p className="token whitespace-nowrap text-[clamp(1.3rem,9.5cqi,2.5rem)] leading-none tracking-[0.02em] text-ink">{token}</p>
+          <span className="absolute left-full top-1/2 ml-0.5 -translate-y-1/2">
+            <CopyToken token={token} />
+          </span>
+        </div>
 
         <div className="relative mx-auto mt-5 w-full max-w-[16rem]">
           {qr ? (

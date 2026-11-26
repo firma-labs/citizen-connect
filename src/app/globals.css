@@ -232,6 +232,10 @@ textarea {
 .live-in {
   animation: live-in 400ms ease-out both;
 }
+/* A toast arriving at the bottom of the screen. */
+.toast-in {
+  animation: live-in 200ms ease-out both;
+}
 @keyframes live-in {
   from {
     opacity: 0;

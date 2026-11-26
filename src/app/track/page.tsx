@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyToken } from "@/components/ui/CopyToken";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -124,7 +125,10 @@ function Track() {
 
       {result && (
         <section className="mt-6 card p-5" aria-live="polite">
-          <p className="token text-[1.3rem]">{result.token}</p>
+          <div className="flex items-center gap-0.5">
+            <p className="token text-[1.3rem]">{result.token}</p>
+            <CopyToken token={result.token} />
+          </div>
           <p className="text-ink-3">{t("track.received", { date: date(result.received_at) })}</p>
           <ol className="mt-5">
             {STAGES.map((s, i) => {

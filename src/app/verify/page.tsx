@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyToken } from "@/components/ui/CopyToken";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArchiveDialog, ArchivedNotice } from "@/components/Archive";
@@ -273,7 +274,10 @@ function Verify() {
       <AppBar title="verify.title" back="/queue" />
       <Screen wide>
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h1 className="token text-[1.5rem]">{token}</h1>
+          <div className="flex items-center gap-0.5">
+            <h1 className="token text-[1.5rem]">{token}</h1>
+            <CopyToken token={token} />
+          </div>
           {status && <StatusTag status={status} />}
           {app && !archived && (
             <Button variant="quiet" icon="archive" className="ml-auto" onClick={() => setArchiving(true)}>
