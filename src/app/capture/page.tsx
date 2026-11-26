@@ -215,7 +215,10 @@ export default function CapturePage() {
             <Button size="lg" block icon="camera" onClick={() => setIssued(null)}>
               {t("token.next")}
             </Button>
-            <Button variant="secondary" block href="/queue">
+            <Button variant="secondary" block href={`/verify?t=${encodeURIComponent(issued.token)}`}>
+              {t("token.watch")}
+            </Button>
+            <Button variant="quiet" block href="/queue">
               {t("token.queue")}
             </Button>
           </div>

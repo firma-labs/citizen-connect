@@ -295,7 +295,10 @@ function Verify() {
           />
         )}
 
-        {loadError && !app && <Notice tone="error">{loadError === "not found" ? t("verify.notOnServer") : loadError}</Notice>}
+        {/* Not uploaded yet (e.g. opened right after issuing the token): a note, not an error; it keeps checking. */}
+        {loadError && !app && (
+          <Notice tone={loadError === "not found" ? "info" : "error"}>{loadError === "not found" ? t("verify.notOnServer") : loadError}</Notice>
+        )}
 
         <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-8">
           {/* Letter pages: a strip on phones, a large side-by-side viewer on wide screens */}

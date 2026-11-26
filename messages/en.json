@@ -103,7 +103,8 @@
     "pages": "{n, plural, one {# page received} other {# pages received}}",
     "saved": "Saved on this phone. It uploads and is read in the background — check it from the queue.",
     "next": "Next citizen",
-    "queue": "Go to queue"
+    "queue": "Go to queue",
+    "watch": "Watch the AI read it"
   },
   "queue": {
     "title": "Queue",
@@ -122,7 +123,8 @@
     "pages": "{n, plural, one {# page} other {# pages}}",
     "archived": "Archived",
     "deleteLocal": "Delete from this phone",
-    "deleteLocalConfirm": "Delete this scan from this phone? It has not been uploaded, so it will be lost."
+    "deleteLocalConfirm": "Delete this scan from this phone? It has not been uploaded, so it will be lost.",
+    "watch": "Watch the reading"
   },
   "verify": {
     "title": "Check details",
