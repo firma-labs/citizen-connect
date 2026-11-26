@@ -81,3 +81,57 @@ export function InitialsAvatar({ name, size = 40 }: { name: string; size?: numbe
     </span>
   );
 }
+
+export type StepArtKind = "scan" | "token" | "track";
+
+/** Illustrations for the "How it works" steps, in the same style as StoryArt. Decorative. */
+export function StepArt({ kind, size = 56 }: { kind: StepArtKind; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden className="shrink-0 rounded-[16px]">
+      {kind === "scan" && (
+        <>
+          <rect width="64" height="64" fill="var(--color-sky-100)" />
+          {/* the letter, slightly turned, inside the scanner's corner marks */}
+          <g transform="rotate(-6 32 33)">
+            <rect x="19" y="14" width="26" height="36" rx="2.5" fill="#fff" stroke="var(--color-sky-200)" strokeWidth="1.5" />
+            <path d="M24 22h16M24 27.5h16M24 33h12M24 38.5h14" stroke="var(--color-sky-500)" strokeWidth="2.2" strokeLinecap="round" />
+          </g>
+          <path
+            d="M12 20v-6a2 2 0 0 1 2-2h6M44 12h6a2 2 0 0 1 2 2v6M52 44v6a2 2 0 0 1-2 2h-6M20 52h-6a2 2 0 0 1-2-2v-6"
+            stroke="var(--color-sky-700)"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </>
+      )}
+      {kind === "token" && (
+        <>
+          <rect width="64" height="64" fill="var(--color-indigo-100)" />
+          <rect x="20" y="9" width="24" height="46" rx="5" fill="#fff" stroke="var(--color-indigo-800)" strokeWidth="2.2" />
+          <path d="M29 13.5h6" stroke="var(--color-indigo-200)" strokeWidth="2" strokeLinecap="round" />
+          {/* the SMS with the token */}
+          <path d="M14 26a4 4 0 0 1 4-4h22a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H24l-5 4v-4h-1a4 4 0 0 1-4-4z" fill="var(--color-indigo-600)" />
+          <path d="M20 28h18M20 33h11" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+          <circle cx="32" cy="49" r="2" fill="var(--color-indigo-200)" />
+        </>
+      )}
+      {kind === "track" && (
+        <>
+          <rect width="64" height="64" fill="var(--color-mint-100)" />
+          {/* kept clear of the top-left corner, where the step number sits */}
+          <path d="M26 20v27" stroke="var(--color-mint-200)" strokeWidth="3" strokeLinecap="round" />
+          <path d="M26 20v14" stroke="var(--color-mint-500)" strokeWidth="3" strokeLinecap="round" />
+          {[20, 34].map((y) => (
+            <g key={y}>
+              <circle cx="26" cy={y} r="6" fill="var(--color-mint-500)" />
+              <path d={`M23.3 ${y}l1.9 1.9 3.6-3.8`} stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </g>
+          ))}
+          <circle cx="26" cy="48" r="5.5" fill="#fff" stroke="var(--color-mint-500)" strokeWidth="2.2" />
+          <path d="M37 20h15M37 34h12M37 48h14" stroke="var(--color-mint-700)" strokeWidth="2.6" strokeLinecap="round" opacity="0.55" />
+        </>
+      )}
+    </svg>
+  );
+}

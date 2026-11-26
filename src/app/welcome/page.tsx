@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PublicFooter } from "@/components/PublicFooter";
-import { InitialsAvatar, StoryArt } from "@/components/StoryArt";
+import { InitialsAvatar, StepArt, StoryArt, type StepArtKind } from "@/components/StoryArt";
 import { AppBar, Screen } from "@/components/ui/AppBar";
 import { Button } from "@/components/ui/Button";
 import { inputClass } from "@/components/ui/Field";
-import { Icon, type IconName } from "@/components/ui/Icon";
+import { Icon } from "@/components/ui/Icon";
 import { StatTile } from "@/components/ui/StatTile";
 import { useIsStaff } from "@/lib/client/session";
 import { useI18n, type MessageKey } from "@/lib/i18n";
@@ -104,10 +104,10 @@ function StatusCheck() {
   );
 }
 
-const STEPS: { icon: IconName; title: MessageKey; body: MessageKey; chip: string }[] = [
-  { icon: "doc", title: "welcome.how.s1.title", body: "welcome.how.s1.body", chip: "bg-sky-50 text-sky-700" },
-  { icon: "check", title: "welcome.how.s2.title", body: "welcome.how.s2.body", chip: "bg-indigo-50 text-indigo-800" },
-  { icon: "search", title: "welcome.how.s3.title", body: "welcome.how.s3.body", chip: "bg-mint-50 text-mint-700" },
+const STEPS: { art: StepArtKind; title: MessageKey; body: MessageKey }[] = [
+  { art: "scan", title: "welcome.how.s1.title", body: "welcome.how.s1.body" },
+  { art: "token", title: "welcome.how.s2.title", body: "welcome.how.s2.body" },
+  { art: "track", title: "welcome.how.s3.title", body: "welcome.how.s3.body" },
 ];
 
 function HowItWorks() {
@@ -119,15 +119,17 @@ function HowItWorks() {
       </h2>
       <ol className="mt-4 grid gap-3 sm:grid-cols-3">
         {STEPS.map((s, i) => (
-          <li key={s.title} className="card flex gap-3 p-4 sm:flex-col">
-            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${s.chip}`}>
-              <Icon name={s.icon} size={22} />
+          <li key={s.title} className="card flex items-start gap-4 p-4 sm:flex-col sm:gap-3 sm:p-5">
+            {/* Illustration with the step number on its corner. */}
+            <span className="relative shrink-0">
+              <StepArt kind={s.art} />
+              <span className="absolute -left-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-primary px-1 font-display text-[0.8rem] font-bold text-on-primary ring-[3px] ring-surface-container">
+                {num(i + 1)}
+              </span>
             </span>
-            <div>
-              <p className="font-semibold">
-                <span className="font-display text-ink-3">{num(i + 1)}.</span> {t(s.title)}
-              </p>
-              <p className="mt-0.5 text-[0.95rem] text-ink-2">{t(s.body)}</p>
+            <div className="min-w-0 pt-0.5">
+              <p className="font-semibold leading-snug">{t(s.title)}</p>
+              <p className="mt-1 text-[0.95rem] leading-relaxed text-ink-2">{t(s.body)}</p>
             </div>
           </li>
         ))}
