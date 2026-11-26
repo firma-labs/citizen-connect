@@ -693,7 +693,15 @@
       "withinTime": "तय समय में निपटाए गए",
       "onSpot": "{n} आवेदन दरबार में ही मौके पर निपटाए गए",
       "byDept": "विभागवार निपटारा",
-      "deptRow": "{received} में से {resolved} निपटाए गए"
+      "deptRow": "{received} में से {resolved} निपटाए गए",
+      "period12m": "पिछले 12 महीने",
+      "periodPilot": "पायलट शुरू होने से ({month})",
+      "updated": "{time} बजे अपडेट",
+      "trend": "महीनेवार",
+      "showTable": "तालिका के रूप में देखें",
+      "showChart": "चार्ट के रूप में देखें",
+      "month": "महीना",
+      "monthRow": "{received} प्राप्त, {resolved} निपटाए गए"
     },
     "stories": {
       "title": "नागरिकों के अनुभव",

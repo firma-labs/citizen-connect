@@ -37,6 +37,11 @@ export const SAMPLE_STORIES: SampleStory[] = [
 
 /** Resolution figures as the public landing page shows them. */
 export interface ResolutionFigures {
+  /** "pilot": since the first application; "12m": the past 12 months. */
+  period: "pilot" | "12m";
+  /** First month counted, "YYYY-MM". */
+  since: string;
+  updated_at: string | null;
   received: number;
   resolved: number;
   resolved_pct: number;
@@ -45,13 +50,42 @@ export interface ResolutionFigures {
   /** Resolved within the department's response time, % of resolved. */
   within_time_pct: number;
   departments: { code: string; received: number; resolved: number; rate: number }[];
+  /** Applications received and resolved per month ("YYYY-MM"), oldest first. */
+  monthly: { month: string; received: number; resolved: number }[];
 }
+
+/** The 12 months ending with the current one (India time), oldest first, as "YYYY-MM". */
+function last12Months(now = new Date()): string[] {
+  const [y, m] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit" })
+    .format(now)
+    .split("-")
+    .map(Number);
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 1 - (11 - i), 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+}
+
+// A believable year: steady intake, resolutions catching up. Sums match the totals below.
+const SAMPLE_RECEIVED = [82, 90, 96, 104, 99, 108, 112, 110, 105, 113, 115, 114];
+const SAMPLE_RESOLVED = [38, 52, 60, 70, 72, 80, 84, 86, 82, 88, 90, 84];
 
 /**
  * Sample figures for PoC demos, shown (labelled "Sample") until the pilot has
  * enough real applications; then the landing page shows the live ones.
  */
-export const SAMPLE_FIGURES: ResolutionFigures = {
+export function sampleFigures(now = new Date()): ResolutionFigures {
+  const months = last12Months(now);
+  return {
+    ...SAMPLE_TOTALS,
+    since: months[0],
+    monthly: months.map((month, i) => ({ month, received: SAMPLE_RECEIVED[i], resolved: SAMPLE_RESOLVED[i] })),
+  };
+}
+
+const SAMPLE_TOTALS: Omit<ResolutionFigures, "since" | "monthly"> = {
+  period: "12m",
+  updated_at: null,
   received: 1248,
   resolved: 886,
   resolved_pct: 71,

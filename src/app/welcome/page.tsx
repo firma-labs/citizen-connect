@@ -13,7 +13,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { useIsStaff } from "@/lib/client/session";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { dept, refLabel } from "@/lib/reference";
-import { SAMPLE_FIGURES, SAMPLE_STORIES, type ResolutionFigures } from "@/lib/stories";
+import { SAMPLE_STORIES, sampleFigures, type ResolutionFigures } from "@/lib/stories";
 
 // Public landing page: what the Janata Darbar service is, a status check,
 // headline figures, sample citizen stories (clearly labelled), and staff
@@ -141,7 +141,7 @@ function HowItWorks() {
  * until then the sample set, labelled "Sample" like the stories.
  */
 function Figures() {
-  const { t, num, locale } = useI18n();
+  const { t, num, locale, date } = useI18n();
   const [live, setLive] = useState<ResolutionFigures | null>(null);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
@@ -153,7 +153,12 @@ function Figures() {
   }, []);
   if (!loaded) return null; // don't flash sample figures before the live ones arrive
   const isLive = !!live && live.received >= MIN_FOR_LIVE_FIGURES;
-  const f = isLive ? live : SAMPLE_FIGURES;
+  const f = isLive ? live : sampleFigures();
+  const monthName = (m: string) => date(`${m}-15T00:00:00Z`, { month: "long", year: "numeric" });
+  const period =
+    f.period === "12m"
+      ? t("welcome.figures.period12m")
+      : t("welcome.figures.periodPilot", { month: monthName(f.since) });
   return (
     <section aria-labelledby="figures" className="mt-10">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -168,7 +173,16 @@ function Figures() {
           <SampleChip />
         )}
       </div>
-      <p className="mt-1 text-[0.92rem] text-ink-3">{t(isLive ? "welcome.figures.liveNote" : "welcome.figures.sampleNote")}</p>
+      <p className="mt-1 font-semibold text-ink-2">
+        {period}
+        {isLive && f.updated_at && (
+          <span className="font-normal text-ink-3">
+            {" · "}
+            {t("welcome.figures.updated", { time: date(f.updated_at, { hour: "numeric", minute: "2-digit" }) })}
+          </span>
+        )}
+      </p>
+      <p className="mt-0.5 text-[0.92rem] text-ink-3">{t(isLive ? "welcome.figures.liveNote" : "welcome.figures.sampleNote")}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile tone="sky" value={num(f.received)} label={t("welcome.figures.received")} />
@@ -190,6 +204,8 @@ function Figures() {
           {t("welcome.figures.onSpot", { n: num(f.resolved_on_spot) })}
         </p>
       )}
+
+      {f.monthly.length > 0 && <MonthlyTrend monthly={f.monthly} />}
 
       {f.departments.length > 0 && (
         <div className="card mt-4 p-5">
@@ -215,6 +231,97 @@ function Figures() {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Month by month: received and resolved side by side (one scale, grouped
+ * bars). Legend + labelled latest month, a tooltip per month, and a table view.
+ */
+function MonthlyTrend({ monthly }: { monthly: ResolutionFigures["monthly"] }) {
+  const { t, num, date } = useI18n();
+  const [active, setActive] = useState<number | null>(null);
+  const [table, setTable] = useState(false);
+  const max = Math.max(1, ...monthly.flatMap((m) => [m.received, m.resolved]));
+  const short = (m: string) => date(`${m}-15T00:00:00Z`, { month: "short" });
+  const long = (m: string) => date(`${m}-15T00:00:00Z`, { month: "long", year: "numeric" });
+  const last = monthly.length - 1;
+  const shown = active ?? last;
+  const n = monthly.length;
+  return (
+    <div className="card mt-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h3 className="font-semibold">{t("welcome.figures.trend")}</h3>
+        <button type="button" onClick={() => setTable((v) => !v)} className="text-[0.9rem] font-semibold text-primary underline-offset-4 hover:underline">
+          {t(table ? "welcome.figures.showChart" : "welcome.figures.showTable")}
+        </button>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.88rem] text-ink-2">
+        <span className="flex items-center gap-1.5">
+          <i aria-hidden className="h-3 w-3 rounded-[3px] bg-sky-500" /> {t("welcome.figures.received")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i aria-hidden className="h-3 w-3 rounded-[3px] bg-mint-500" /> {t("welcome.figures.resolved")}
+        </span>
+      </div>
+
+      {table ? (
+        <table className="mt-4 w-full text-[0.92rem]">
+          <thead>
+            <tr className="text-left text-ink-3">
+              <th className="py-1.5 font-semibold">{t("welcome.figures.month")}</th>
+              <th className="py-1.5 text-right font-semibold">{t("welcome.figures.received")}</th>
+              <th className="py-1.5 text-right font-semibold">{t("welcome.figures.resolved")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {monthly.map((m) => (
+              <tr key={m.month} className="border-t border-rule">
+                <td className="py-1.5">{long(m.month)}</td>
+                <td className="py-1.5 text-right tabular-nums">{num(m.received)}</td>
+                <td className="py-1.5 text-right tabular-nums">{num(m.resolved)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <>
+          {/* The month in focus (latest by default; hover, tap or focus a month to change). */}
+          <p className="mt-3 text-[0.92rem] text-ink-2" aria-live="polite">
+            <span className="font-semibold text-ink">{long(monthly[shown].month)}</span>
+            {" · "}
+            {t("welcome.figures.monthRow", { received: num(monthly[shown].received), resolved: num(monthly[shown].resolved) })}
+          </p>
+          <div className="mt-3 flex h-36 items-end gap-[3px] border-b border-rule sm:gap-2" onMouseLeave={() => setActive(null)}>
+            {monthly.map((m, i) => (
+              <button
+                key={m.month}
+                type="button"
+                aria-label={`${long(m.month)}: ${t("welcome.figures.monthRow", { received: num(m.received), resolved: num(m.resolved) })}`}
+                onMouseEnter={() => setActive(i)}
+                onFocus={() => setActive(i)}
+                onClick={() => setActive(i)}
+                className={`flex h-full min-w-0 flex-1 items-end justify-center gap-[2px] rounded-t-[6px] px-[1px] outline-offset-2 transition-colors ${shown === i ? "bg-ink/5" : ""}`}
+              >
+                <i className="block w-full max-w-4 rounded-t-[4px] bg-sky-500" style={{ height: `${(m.received / max) * 100}%` }} />
+                <i className="block w-full max-w-4 rounded-t-[4px] bg-mint-500" style={{ height: `${(m.resolved / max) * 100}%` }} />
+              </button>
+            ))}
+          </div>
+          <div className="mt-1.5 flex gap-[3px] sm:gap-2" aria-hidden>
+            {monthly.map((m, i) => (
+              <span
+                key={m.month}
+                // On phones every other month is labelled, always including the latest.
+                className={`min-w-0 flex-1 truncate text-center text-[0.7rem] text-ink-3 ${n > 6 && (last - i) % 2 === 1 ? "max-sm:invisible" : ""}`}
+              >
+                {short(m.month)}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

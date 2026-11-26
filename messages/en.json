@@ -693,7 +693,15 @@
       "withinTime": "Resolved within the response time",
       "onSpot": "{n} resolved on the spot at the Darbar",
       "byDept": "Resolution by department",
-      "deptRow": "{resolved} of {received} resolved"
+      "deptRow": "{resolved} of {received} resolved",
+      "period12m": "Past 12 months",
+      "periodPilot": "Since the pilot began ({month})",
+      "updated": "updated {time}",
+      "trend": "Month by month",
+      "showTable": "Show as table",
+      "showChart": "Show as chart",
+      "month": "Month",
+      "monthRow": "{received} received, {resolved} resolved"
     },
     "stories": {
       "title": "Citizens' stories",

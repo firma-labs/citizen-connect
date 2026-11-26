@@ -693,7 +693,15 @@
       "withinTime": "प्रतिसाद मुदतीत निकाली",
       "onSpot": "{n} अर्ज दरबारातच जागीच निकाली",
       "byDept": "विभागनिहाय निपटारा",
-      "deptRow": "{received} पैकी {resolved} निकाली"
+      "deptRow": "{received} पैकी {resolved} निकाली",
+      "period12m": "गेले 12 महिने",
+      "periodPilot": "प्रायोगिक टप्पा सुरू झाल्यापासून ({month})",
+      "updated": "{time} ला अद्ययावत",
+      "trend": "महिनानिहाय",
+      "showTable": "तक्त्याच्या स्वरूपात पहा",
+      "showChart": "आलेखाच्या स्वरूपात पहा",
+      "month": "महिना",
+      "monthRow": "{received} प्राप्त, {resolved} निकाली"
     },
     "stories": {
       "title": "नागरिकांचे अनुभव",
