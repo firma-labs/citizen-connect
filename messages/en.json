@@ -178,7 +178,8 @@
       "opening": "Opening the letter…",
       "page": "Reading page {n} of {total}…",
       "details": "Picking out the details…",
-      "routing": "Summarising and choosing the department…"
+      "routing": "Summarising and choosing the department…",
+      "pageOf": "Page {n} of {total}"
     }
   },
   "section": {

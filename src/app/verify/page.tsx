@@ -256,9 +256,11 @@ function Verify() {
   const canRescan = !archived && (status === "read" || status === "read_failed" || status === "captured");
   const showForm = !archived && !rescanning && !!form && (status === "read" || (status === "read_failed" && manual));
   const done = !!status && isRouted(status);
-  // While the AI reads a page, that page is shown with the scan band (wide screens follow it).
-  const readingPage = status === "reading" && app ? livePage(app.reading_live, app.page_count) : null;
-  const shownPage = readingPage ?? viewing;
+  // From the moment the pages are in until the AI has finished reading and extracting,
+  // the letter shows the scan band. While it transcribes, the page it is on is shown.
+  const scanning = !!app && !archived && !rescanning && (status === "reading" || (status === "captured" && pagesIn === app.page_count));
+  const readingPage = scanning && status === "reading" ? livePage(app!.reading_live, app!.page_count) : null;
+  const shownPage = Math.min(readingPage ?? viewing, Math.max(pageUrls.length - 1, 0));
   const pageType = (i: number) => {
     const code = app?.extraction?.reader.pages[i]?.page_type;
     return code ? refLabel(PAGE_TYPES.find((p) => p.code === code), locale) : null;
@@ -305,6 +307,16 @@ function Verify() {
           {pageUrls.length > 0 && (
             <aside className="mb-5 lg:sticky lg:top-20 lg:mb-0">
               <h2 className="sr-only">{t("verify.pages")}</h2>
+              {/* Phones, while the AI reads: the page large, with the scan band (as in the intake mock). */}
+              {scanning && (
+                <div className="relative mb-3 overflow-hidden rounded-[var(--radius-panel)] bg-[#3a342e] lg:hidden">
+                  <PageImage src={pageUrls[shownPage]} className="mx-auto max-h-[58vh] w-full object-contain" />
+                  <ScanBand />
+                  <span className="absolute right-3 top-3 rounded-full bg-ink/70 px-3 py-1 text-[0.8rem] font-semibold text-white">
+                    {t("verify.live.pageOf", { n: shownPage + 1, total: pageUrls.length })}
+                  </span>
+                </div>
+              )}
               <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 lg:hidden">
                 {pageUrls.map((u, i) => (
                   <button
@@ -314,7 +326,7 @@ function Verify() {
                     className="relative w-36 shrink-0 snap-start overflow-hidden rounded-[var(--radius-control)] border border-rule bg-surface"
                   >
                     <PageImage src={u} className="aspect-[3/4] w-full object-cover" lazy />
-                    {readingPage === i && <ScanBand />}
+                    {scanning && shownPage === i && <ScanBand />}
                     <span className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-2 text-[0.85rem] font-bold text-white">{i + 1}</span>
                     {pageType(i) && <span className="absolute inset-x-0 bottom-0 bg-ink/75 px-2 py-0.5 text-[0.8rem] text-white">{pageType(i)}</span>}
                   </button>
@@ -327,7 +339,7 @@ function Verify() {
                   className="relative block w-full overflow-hidden card"
                 >
                   <PageImage src={pageUrls[Math.min(shownPage, pageUrls.length - 1)]} className="max-h-[calc(100vh-11rem)] min-h-64 w-full object-contain" />
-                  {readingPage !== null && <ScanBand />}
+                  {scanning && <ScanBand />}
                 </button>
                 {pageUrls.length > 1 && (
                   <div className="mt-2 flex flex-wrap gap-2">
