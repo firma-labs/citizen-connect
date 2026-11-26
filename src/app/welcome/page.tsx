@@ -12,21 +12,15 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { StatTile } from "@/components/ui/StatTile";
 import { useIsStaff } from "@/lib/client/session";
 import { useI18n, type MessageKey } from "@/lib/i18n";
-import { SAMPLE_STORIES } from "@/lib/stories";
+import { dept, refLabel } from "@/lib/reference";
+import { SAMPLE_FIGURES, SAMPLE_STORIES, type ResolutionFigures } from "@/lib/stories";
 
 // Public landing page: what the Janata Darbar service is, a status check,
 // headline figures, sample citizen stories (clearly labelled), and staff
 // sign-in as the next screen. Signed-out visits to "/" land here.
 
-/** Below this many applications the figures say little, so they are not shown. */
-const MIN_FOR_FIGURES = 10;
-
-interface Summary {
-  received: number;
-  resolved: number;
-  resolved_pct: number;
-  avg_days_to_resolve: number | null;
-}
+/** Below this many real applications the figures say little; sample ones (labelled) are shown instead. */
+const MIN_FOR_LIVE_FIGURES = 10;
 
 export default function WelcomePage() {
   return (
@@ -142,27 +136,84 @@ function HowItWorks() {
   );
 }
 
-/** Live totals from the server; hidden until there are enough applications to mean something. */
+/**
+ * Resolution figures: the live ones once the pilot has enough applications,
+ * until then the sample set, labelled "Sample" like the stories.
+ */
 function Figures() {
-  const { t, num } = useI18n();
-  const [s, setS] = useState<Summary | null>(null);
+  const { t, num, locale } = useI18n();
+  const [live, setLive] = useState<ResolutionFigures | null>(null);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     fetch("/api/public/summary")
       .then((r) => (r.ok ? r.json() : null))
-      .then(setS)
-      .catch(() => {});
+      .then(setLive)
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, []);
-  if (!s || s.received < MIN_FOR_FIGURES) return null;
+  if (!loaded) return null; // don't flash sample figures before the live ones arrive
+  const isLive = !!live && live.received >= MIN_FOR_LIVE_FIGURES;
+  const f = isLive ? live : SAMPLE_FIGURES;
   return (
     <section aria-labelledby="figures" className="mt-10">
-      <h2 id="figures" className="text-[1.35rem] font-bold">
-        {t("welcome.figures.title")}
-      </h2>
-      <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
-        <StatTile tone="sky" value={num(s.received)} label={t("welcome.figures.received")} />
-        <StatTile tone="mint" value={`${num(s.resolved_pct)}%`} label={t("welcome.figures.resolved")} />
-        {s.avg_days_to_resolve !== null && <StatTile tone="violet" value={num(s.avg_days_to_resolve)} label={t("welcome.figures.days")} />}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 id="figures" className="text-[1.35rem] font-bold">
+          {t("welcome.figures.title")}
+        </h2>
+        {isLive ? (
+          <span className="shrink-0 rounded-full bg-mint-50 px-2.5 py-0.5 text-[0.78rem] font-bold uppercase tracking-wide text-mint-700">
+            {t("welcome.figures.live")}
+          </span>
+        ) : (
+          <SampleChip />
+        )}
       </div>
+      <p className="mt-1 text-[0.92rem] text-ink-3">{t(isLive ? "welcome.figures.liveNote" : "welcome.figures.sampleNote")}</p>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile tone="sky" value={num(f.received)} label={t("welcome.figures.received")} />
+        <StatTile
+          tone="mint"
+          value={`${num(f.resolved_pct)}%`}
+          label={t("welcome.figures.resolved")}
+          sub={t("welcome.figures.resolvedSub", { n: num(f.resolved) })}
+        />
+        {f.avg_days_to_resolve !== null && (
+          <StatTile tone="violet" value={num(f.avg_days_to_resolve)} label={t("welcome.figures.days")} />
+        )}
+        <StatTile tone="peach" value={`${num(f.within_time_pct)}%`} label={t("welcome.figures.withinTime")} />
+      </div>
+
+      {f.resolved_on_spot > 0 && (
+        <p className="mt-3 flex items-center gap-2 font-semibold text-mint-700">
+          <Icon name="check" size={20} />
+          {t("welcome.figures.onSpot", { n: num(f.resolved_on_spot) })}
+        </p>
+      )}
+
+      {f.departments.length > 0 && (
+        <div className="card mt-4 p-5">
+          <h3 className="font-semibold">{t("welcome.figures.byDept")}</h3>
+          <ul className="mt-3 space-y-3.5">
+            {f.departments.map((d) => (
+              <li key={d.code}>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                  <span className="font-medium">{refLabel(dept(d.code), locale) || d.code}</span>
+                  <span className="text-[0.88rem] text-ink-3">
+                    {t("welcome.figures.deptRow", { resolved: num(d.resolved), received: num(d.received) })}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-3">
+                  <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface" aria-hidden>
+                    <i className="block h-full rounded-full bg-mint-500" style={{ width: `${d.rate}%` }} />
+                  </span>
+                  <span className="w-11 text-right font-display font-bold text-mint-700">{num(d.rate)}%</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

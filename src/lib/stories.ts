@@ -34,3 +34,34 @@ export const SAMPLE_STORIES: SampleStory[] = [
   story("pension", "pension", 26),
   story("leopard", "wildlife", 6),
 ];
+
+/** Resolution figures as the public landing page shows them. */
+export interface ResolutionFigures {
+  received: number;
+  resolved: number;
+  resolved_pct: number;
+  avg_days_to_resolve: number | null;
+  resolved_on_spot: number;
+  /** Resolved within the department's response time, % of resolved. */
+  within_time_pct: number;
+  departments: { code: string; received: number; resolved: number; rate: number }[];
+}
+
+/**
+ * Sample figures for PoC demos, shown (labelled "Sample") until the pilot has
+ * enough real applications; then the landing page shows the live ones.
+ */
+export const SAMPLE_FIGURES: ResolutionFigures = {
+  received: 1248,
+  resolved: 886,
+  resolved_pct: 71,
+  avg_days_to_resolve: 13,
+  resolved_on_spot: 142,
+  within_time_pct: 84,
+  departments: [
+    { code: "NMMC", received: 412, resolved: 321, rate: 78 },
+    { code: "REV", received: 286, resolved: 197, rate: 69 },
+    { code: "FOR", received: 194, resolved: 157, rate: 81 },
+    { code: "ZP", received: 158, resolved: 101, rate: 64 },
+  ],
+};

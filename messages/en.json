@@ -682,10 +682,18 @@
       }
     },
     "figures": {
-      "title": "So far",
+      "title": "Resolution so far",
+      "live": "Live",
+      "sampleNote": "Sample figures for this demonstration. Live figures appear here once the pilot has enough applications.",
+      "liveNote": "Live figures, updated every few minutes.",
       "received": "Applications received",
       "resolved": "Resolved",
-      "days": "Average days to resolve"
+      "resolvedSub": "{n} applications",
+      "days": "Average days to resolve",
+      "withinTime": "Resolved within the response time",
+      "onSpot": "{n} resolved on the spot at the Darbar",
+      "byDept": "Resolution by department",
+      "deptRow": "{resolved} of {received} resolved"
     },
     "stories": {
       "title": "Citizens' stories",
