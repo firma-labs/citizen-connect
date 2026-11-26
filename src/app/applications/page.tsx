@@ -107,7 +107,7 @@ export default function ApplicationsPage() {
             <ul className="grid gap-3 lg:hidden">
               {filtered.slice(0, limit).map((r) => (
                 <li key={r.token}>
-                  <Link href={href(r)} className="card block p-4 transition-colors hover:bg-surface-container-high">
+                  <Link href={href(r)} className="card-elevated raised block p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="token text-[1.05rem]">{r.token}</span>
                       <StatusTag status={r.status} overdue={isOverdue(r)} />

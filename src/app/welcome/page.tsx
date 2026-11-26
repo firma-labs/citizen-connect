@@ -309,15 +309,23 @@ function MonthlyTrend({ monthly }: { monthly: ResolutionFigures["monthly"] }) {
             ))}
           </div>
           <div className="mt-1.5 flex gap-[3px] sm:gap-2" aria-hidden>
-            {monthly.map((m, i) => (
-              <span
-                key={m.month}
-                // On phones every other month is labelled, always including the latest.
-                className={`min-w-0 flex-1 truncate text-center text-[0.7rem] text-ink-3 ${n > 6 && (last - i) % 2 === 1 ? "max-sm:invisible" : ""}`}
-              >
-                {short(m.month)}
-              </span>
-            ))}
+            {monthly.map((m, i) => {
+              // On phones every other month is labelled, always including the latest.
+              const phoneLabel = n <= 6 || (last - i) % 2 === 0;
+              const firstPhoneLabel = n <= 6 ? 0 : last % 2;
+              // The year goes under the first labelled month and under every January.
+              const jan = m.month.endsWith("-01");
+              const yearWide = i === 0 || jan;
+              const yearPhone = phoneLabel && (i === firstPhoneLabel || jan);
+              const yearCls = yearWide && yearPhone ? "" : yearWide ? "max-sm:invisible" : yearPhone ? "sm:invisible" : "invisible";
+              return (
+                <span key={m.month} className={`min-w-0 flex-1 text-center text-[0.7rem] leading-tight text-ink-3 ${phoneLabel ? "" : "max-sm:invisible"}`}>
+                  <span className="block truncate">{short(m.month)}</span>
+                  {/* Wider than a month column on phones: centred under it, spilling over its unlabelled neighbours. */}
+                  <span className={`flex justify-center font-semibold whitespace-nowrap text-ink-2 ${yearCls}`}>{m.month.slice(0, 4)}</span>
+                </span>
+              );
+            })}
           </div>
         </>
       )}
