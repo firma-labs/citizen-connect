@@ -11,7 +11,7 @@ export function LegalPage({ title, sections }: { title: MessageKey; sections: [M
   const { t } = useI18n();
   return (
     <>
-      <AppBar publicPage />
+      <AppBar publicPage back="/welcome" />
       <Screen>
         <h1 className="text-[1.7rem] font-bold tracking-tight">{t(title)}</h1>
         <Notice tone="attention" className="mt-4">

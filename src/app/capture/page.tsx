@@ -205,7 +205,7 @@ export default function CapturePage() {
   if (issued) {
     return (
       <>
-        <AppBar title="token.title" />
+        <AppBar title="token.title" back="/" />
         <Screen>
           <div className="rounded-[var(--radius-hero)] bg-gradient-to-br from-indigo-50 via-sky-50 to-mint-50 p-4 sm:p-6">
             <TokenCard token={issued.token} pages={issued.pages} issuedAt={issued.at} />
@@ -227,7 +227,7 @@ export default function CapturePage() {
 
   return (
     <>
-      <AppBar title="capture.title" />
+      <AppBar title="capture.title" back="/" />
       <Screen>
         {/* Default path (PRD §6): the phone's own camera app — full resolution, no permission prompt. */}
         <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFiles(e.target.files)} />
@@ -363,8 +363,8 @@ export default function CapturePage() {
       <div className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-10 border-t border-rule bg-surface/95 px-4 py-3 backdrop-blur-md lg:bottom-0">
         <div className="mx-auto flex max-w-2xl gap-3">
           {pages.length > 0 && (
-            <Button variant="danger" size="lg" icon="trash" onClick={() => void discard()} aria-label={t("capture.discard")}>
-              <span className="sr-only sm:not-sr-only">{t("capture.discard")}</span>
+            <Button variant="danger" size="lg" icon="trash" onClick={() => void discard()}>
+              {t("capture.discard")}
             </Button>
           )}
           <Button size="lg" block onClick={() => void issueToken()} disabled={pages.length === 0 || busy > 0}>

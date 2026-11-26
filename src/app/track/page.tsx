@@ -20,7 +20,7 @@ export default function TrackPage() {
   const staff = useIsStaff();
   return (
     <>
-      <AppBar publicPage />
+      <AppBar publicPage back={staff ? "/" : "/welcome"} />
       <Screen>
         <Suspense>
           <Track />

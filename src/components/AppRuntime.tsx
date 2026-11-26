@@ -8,6 +8,7 @@ import { useSettings } from "@/lib/client/settings";
 import { useHtmlLang, useI18n } from "@/lib/i18n";
 import { Button } from "./ui/Button";
 import { Notice } from "./ui/Notice";
+import { noteScreen } from "@/lib/client/nav";
 
 // Pages anyone may see without signing in (the proxy allows the same ones).
 const PUBLIC_PATHS = ["/welcome", "/login", "/track", "/offline", "/privacy", "/terms", "/accessibility"];
@@ -65,7 +66,14 @@ function useTextScale() {
   }, [settings.textScale]);
 }
 
+/** Records the screens this tab shows, for the app bar's back arrow (lib/client/nav). */
+function useScreenTrail() {
+  const pathname = usePathname();
+  useEffect(() => noteScreen(pathname), [pathname]);
+}
+
 export function AppRuntime() {
+  useScreenTrail();
   useHtmlLang();
   useTextScale();
   useSessionGuard();

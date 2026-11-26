@@ -48,7 +48,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <AppBar />
+      <AppBar title="nav.settings" back="/" />
       <Screen>
         <h1 className="mb-4 text-[1.7rem] font-bold tracking-tight">{t("settings.title")}</h1>
 
