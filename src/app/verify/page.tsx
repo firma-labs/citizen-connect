@@ -20,6 +20,7 @@ import { useI18n, type MessageKey } from "@/lib/i18n";
 import { CATEGORIES, DEPARTMENTS, LANGUAGES, PAGE_TYPES, PRIORITIES, dept, refLabel } from "@/lib/reference";
 import { isValidMobile, normaliseMobile } from "@/lib/token";
 import { isRouted, type Application, type Confidence, type VerifiedFields } from "@/lib/types";
+import { useLeaveGuard } from "@/lib/client/nav";
 
 export default function VerifyPage() {
   return (
@@ -134,6 +135,8 @@ function Verify() {
   const [onSpotRemark, setOnSpotRemark] = useState("");
   const [pollKey, setPollKey] = useState(0);
   const [seededFrom, setSeededFrom] = useState<string | null>(null); // read_at of the AI result in the form
+  // Staff changed something in the form that isn't saved yet: ask before leaving.
+  const [edited, setEdited] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -170,6 +173,7 @@ function Verify() {
     setSeededFrom(readAt);
     setForm(fromExtraction(app));
     setConfirmed(false);
+    setEdited(false);
   }
 
   const attentionOf = useMemo(() => {
@@ -191,6 +195,9 @@ function Verify() {
     return (k: keyof VerifiedFields) => toAttention(map[k]);
   }, [app]);
 
+  // Before any early return (hooks run in the same order every render).
+  useLeaveGuard(edited && !!form && !!app && !isRouted(app.status) && !app.archived && !saving, t("verify.leave"));
+
   if (!token) {
     return (
       <>
@@ -202,7 +209,10 @@ function Verify() {
     );
   }
 
-  const set = <K extends keyof VerifiedFields>(k: K, v: VerifiedFields[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const set = <K extends keyof VerifiedFields>(k: K, v: VerifiedFields[K]) => {
+    setForm((f) => (f ? { ...f, [k]: v } : f));
+    setEdited(true);
+  };
 
   async function save() {
     if (!form || !confirmed) return;
@@ -223,6 +233,7 @@ function Verify() {
       if (res.status === 503) throw new Error(t("verify.busy"));
       if (!res.ok) throw new Error(body.error ?? t("verify.saveFailed", { status: res.status }));
       setApp(body.application);
+      setEdited(false);
       void syncNow();
       window.scrollTo({ top: 0 });
     } catch (e) {
@@ -341,6 +352,7 @@ function Verify() {
                 onDone={() => {
                   setRescanning(false);
                   setForm(null);
+                  setEdited(false);
                   setManual(false);
                   setConfirmed(false);
                   setPollKey((k) => k + 1);
@@ -556,7 +568,10 @@ function Verify() {
 
                 <div className="card p-5">
                   <label className="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" checked={onSpot} onChange={(e) => setOnSpot(e.target.checked)} className="mt-0.5 h-6 w-6 shrink-0 accent-primary" />
+                    <input type="checkbox" checked={onSpot} onChange={(e) => {
+                        setOnSpot(e.target.checked);
+                        setEdited(true);
+                      }} className="mt-0.5 h-6 w-6 shrink-0 accent-primary" />
                     <span>
                       <span className="block font-semibold">{t("verify.onSpot.label")}</span>
                       <span className="block text-[0.9rem] text-ink-3">{t("verify.onSpot.hint")}</span>
@@ -567,7 +582,10 @@ function Verify() {
                       <label htmlFor="onspot-remark" className="block text-[0.92rem] font-semibold">
                         {t("verify.onSpot.remark")}
                       </label>
-                      <textarea id="onspot-remark" required value={onSpotRemark} onChange={(e) => setOnSpotRemark(e.target.value)} maxLength={1000} className={`${inputClass()} mt-1`} />
+                      <textarea id="onspot-remark" required value={onSpotRemark} onChange={(e) => {
+                          setOnSpotRemark(e.target.value);
+                          setEdited(true);
+                        }} maxLength={1000} className={`${inputClass()} mt-1`} />
                     </div>
                   )}
                 </div>

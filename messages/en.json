@@ -170,7 +170,8 @@
       "remark": "What was decided"
     },
     "busy": "Another save was happening at the same moment, so nothing was saved. Try again.",
-    "saveFailed": "Could not save (error {status}). Nothing is lost — try again."
+    "saveFailed": "Could not save (error {status}). Nothing is lost — try again.",
+    "leave": "Your changes to this application are not saved. Leave without saving?"
   },
   "section": {
     "applicant": "Applicant",
