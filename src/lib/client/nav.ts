@@ -8,6 +8,10 @@ import { useEffect } from "react";
 
 const trail: string[] = [];
 
+/** Pages anyone may see without signing in (the proxy allows the same ones). Never sent to staff sign-in. */
+export const PUBLIC_PATHS = ["/welcome", "/login", "/track", "/offline", "/privacy", "/terms", "/accessibility"];
+export const isPublicPath = (path: string) => PUBLIC_PATHS.includes(path);
+
 export function noteScreen(path: string) {
   if (trail[trail.length - 1] === path) return; // same screen, e.g. only the query changed
   if (trail[trail.length - 2] === path) trail.pop();

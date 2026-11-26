@@ -8,10 +8,7 @@ import { useSettings } from "@/lib/client/settings";
 import { useHtmlLang, useI18n } from "@/lib/i18n";
 import { Button } from "./ui/Button";
 import { Notice } from "./ui/Notice";
-import { noteScreen } from "@/lib/client/nav";
-
-// Pages anyone may see without signing in (the proxy allows the same ones).
-const PUBLIC_PATHS = ["/welcome", "/login", "/track", "/offline", "/privacy", "/terms", "/accessibility"];
+import { isPublicPath, noteScreen } from "@/lib/client/nav";
 
 /**
  * Sends a screen that is already open to sign-in once the server says this
@@ -25,7 +22,7 @@ const PUBLIC_PATHS = ["/welcome", "/login", "/track", "/offline", "/privacy", "/
 function useSessionGuard() {
   const pathname = usePathname();
   useEffect(() => {
-    if (PUBLIC_PATHS.includes(pathname)) return;
+    if (isPublicPath(pathname)) return;
     let stopped = false;
     const check = async () => {
       if (stopped || document.visibilityState !== "visible" || !navigator.onLine) return;

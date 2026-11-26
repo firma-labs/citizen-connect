@@ -1,6 +1,7 @@
 "use client";
 
 import { deleteApp, getPage, listApps, patchApp, prunePages, type LocalApplication } from "./db";
+import { isPublicPath } from "./nav";
 
 // Drains queued captures to the server: create record → upload each missing
 // page → ask for the AI read → poll status. Every step is idempotent on the
@@ -26,6 +27,12 @@ export function timeoutSignal(ms: number): AbortSignal {
   return c.signal;
 }
 let running = false;
+/**
+ * The server said "sign in" while a public page was open (a staff phone handed
+ * to a citizen, or a session that ran out). Uploads wait, without leaving the
+ * page, until a staff screen is open again.
+ */
+let signedOutOnPublicPage = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 let started = false;
 
@@ -70,6 +77,10 @@ const DONE = new Set(["routed", "acknowledged", "in_progress", "closed"]);
 
 export async function syncNow(): Promise<void> {
   if (running || (typeof navigator !== "undefined" && !navigator.onLine)) return;
+  if (signedOutOnPublicPage) {
+    if (isPublicPath(window.location.pathname)) return;
+    signedOutOnPublicPage = false; // a staff screen: try again (and go to sign-in if still signed out)
+  }
   running = true;
   lastError = null;
   emit();
@@ -86,6 +97,7 @@ export async function syncNow(): Promise<void> {
           await deleteApp(app.token);
           continue;
         }
+        if (signedOutOnPublicPage) break; // not this scan's fault: wait for sign-in
         lastError = (e as Error).message;
         await patchApp(app.token, { last_error: lastError });
         // Offline, or the signal is too weak to finish a request: stop this pass
@@ -109,10 +121,15 @@ async function call(url: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT
     if ((e as DOMException).name === "TimeoutError" || (e as DOMException).name === "AbortError") throw new Error(SYNC_TIMEOUT);
     throw e;
   }
-  if (res.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
+  if (res.status === 401 && typeof window !== "undefined") {
     // Signed out or session expired. Queued scans stay in IndexedDB and upload after sign-in.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- outside React; a full load restarts sync signed in
-    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    if (isPublicPath(window.location.pathname)) {
+      // A citizen may be using this page (landing page, status check): never take it away to staff sign-in.
+      signedOutOnPublicPage = true;
+    } else {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- outside React; a full load restarts sync signed in
+      window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    }
   }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(body.error ?? `${res.status} ${res.statusText}`), { status: res.status }) as HttpError;
